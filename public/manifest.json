@@ -1,0 +1,16 @@
+{
+  "name": "Planta 3D — SOMA-ID",
+  "short_name": "Planta 3D",
+  "description": "Editor de plantas arquitetonicas para marcenaria",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0C0E13",
+  "theme_color": "#00E5CC",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23080A0F'/><text x='50' y='68' font-family='monospace' font-size='52' font-weight='bold' fill='%2300E5CC' text-anchor='middle'>P3</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

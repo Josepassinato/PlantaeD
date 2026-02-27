@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planta 3D — SOMA-ID</title>
+  <meta name="description" content="Editor de plantas arquitetonicas para marcenaria — Modulo SOMA-ID">
+  <meta name="theme-color" content="#00E5CC">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23080A0F'/><text x='50' y='68' font-family='monospace' font-size='52' font-weight='bold' fill='%2300E5CC' text-anchor='middle'>P3</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+  <!-- ═══ TOP NAV ═══ -->
+  <header id="header">
+    <div class="nav-brand">
+      <button id="btn-sidebar-toggle" class="nav-icon-btn" title="Meus projetos">
+        <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="13" y2="15"/></svg>
+      </button>
+      <div class="logo-mark">P3D</div>
+      <span class="logo-text">Planta 3D</span>
+    </div>
+
+    <div class="nav-center">
+      <span id="plan-name" class="plan-name">Nenhum projeto aberto</span>
+    </div>
+
+    <div class="header-right">
+      <button id="btn-undo" class="header-btn" title="Desfazer (Ctrl+Z)" disabled>
+        <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l-2-2 2-2"/><path d="M2 6h12a4 4 0 0 1 0 8H9"/></svg>
+      </button>
+      <button id="btn-redo" class="header-btn" title="Refazer (Ctrl+Shift+Z)" disabled>
+        <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8l2-2-2-2"/><path d="M18 6H6a4 4 0 0 0 0 8h5"/></svg>
+      </button>
+      <div class="nav-sep"></div>
+
+      <div id="zoom-indicator" class="zoom-indicator" title="Nivel de zoom">100%</div>
+
+      <button id="btn-snap" class="header-btn active" title="Alinhamento magnetico: encaixa elementos automaticamente">
+        <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10a6 6 0 0 1 12 0"/><path d="M7 10a3 3 0 0 1 6 0"/><line x1="10" y1="10" x2="10" y2="16"/></svg>
+        <span class="btn-text">Snap</span>
+      </button>
+      <button id="btn-2d3d" class="header-btn" title="Alternar entre vista 2D (planta baixa) e 3D (perspectiva)">3D</button>
+      <button id="btn-grid" class="header-btn active" title="Mostrar/ocultar grade de referencia">
+        <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="16" height="16" rx="1"/><line x1="2" y1="7" x2="18" y2="7"/><line x1="2" y1="13" x2="18" y2="13"/><line x1="7" y1="2" x2="7" y2="18"/><line x1="13" y1="2" x2="13" y2="18"/></svg>
+        <span class="btn-text">Grade</span>
+      </button>
+      <div class="nav-sep"></div>
+
+      <button id="btn-save-plan" class="header-btn header-btn--primary" title="Salvar projeto">
+        <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 17H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v7a2 2 0 0 1-2 2z"/><path d="M13 17v-5H7v5"/><path d="M7 3v4h5"/></svg>
+        <span class="btn-text">Salvar</span>
+      </button>
+      <button id="btn-export-png" class="header-btn" title="Exportar imagem PNG do projeto">
+        <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="2"/><circle cx="7.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"/><path d="M3 13l4-4 3 3 2-2 5 5"/></svg>
+        <span class="btn-text">PNG</span>
+      </button>
+      <button id="btn-import-dxf" class="header-btn" title="Importar arquivo DXF (AutoCAD)">
+        <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M12 2v5h5"/></svg>
+        <span class="btn-text">DXF</span>
+      </button>
+      <input type="file" id="dxf-file-input" accept=".dxf" style="display:none">
+      <button id="btn-fullscreen" class="header-btn" title="Expandir para tela cheia">
+        <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V3h4"/><path d="M17 7V3h-4"/><path d="M3 13v4h4"/><path d="M17 13v4h-4"/></svg>
+      </button>
+
+      <button id="btn-help-global" class="header-btn" title="Ajuda e atalhos de teclado">
+        <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7"/><path d="M7.5 7.5a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3.5"/><circle cx="10" cy="15" r="0.5" fill="currentColor"/></svg>
+      </button>
+
+      <button id="btn-annotations-toggle" class="nav-icon-btn mobile-only" title="Painel de anotacoes">
+        <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="14" height="14" rx="2"/><line x1="6" y1="7" x2="14" y2="7"/><line x1="6" y1="10" x2="14" y2="10"/><line x1="6" y1="13" x2="10" y2="13"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══ MAIN LAYOUT ═══ -->
+  <div id="main">
+
+    <!-- ─── LEFT TOOL STRIP ─── -->
+    <div id="toolbar" class="tool-strip">
+      <div class="tool-section">
+        <div class="tool-section-label">Desenhar</div>
+        <button id="tool-select" class="tool-btn active" data-tool="select" title="Selecionar e mover elementos (V)">
+          <svg viewBox="0 0 20 20" width="20" height="20"><path d="M5 2l10 8-5 1-2 5z" fill="currentColor"/></svg>
+          <span class="tool-label">Selecionar</span>
+        </button>
+        <button id="tool-wall" class="tool-btn" data-tool="wall" title="Desenhar paredes clicando ponto a ponto (W)">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="2" width="4" height="16" rx="0.5"/><line x1="6" y1="2" x2="6" y2="18" stroke-dasharray="2 2" opacity="0.4"/><line x1="14" y1="2" x2="14" y2="18" stroke-dasharray="2 2" opacity="0.4"/></svg>
+          <span class="tool-label">Parede</span>
+        </button>
+        <button id="tool-door" class="tool-btn" data-tool="door" title="Adicionar porta em uma parede existente (D)">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 18V3h10v15"/><path d="M5 18a10 10 0 0 1 10-10" stroke-dasharray="2.5 2"/><circle cx="13" cy="11" r="0.8" fill="currentColor"/></svg>
+          <span class="tool-label">Porta</span>
+        </button>
+        <button id="tool-window" class="tool-btn" data-tool="window" title="Adicionar janela em uma parede existente (J)">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="14" height="12" rx="1"/><line x1="10" y1="4" x2="10" y2="16"/><line x1="3" y1="10" x2="17" y2="10"/></svg>
+          <span class="tool-label">Janela</span>
+        </button>
+        <button id="tool-room" class="tool-btn" data-tool="room" title="Criar sala desenhando os cantos — duplo-clique para fechar (O)">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3 2"><rect x="3" y="3" width="14" height="14" rx="0.5"/></svg>
+          <span class="tool-label">Sala</span>
+        </button>
+        <button id="tool-column" class="tool-btn" data-tool="column" title="Posicionar pilar estrutural (P)">
+          <svg viewBox="0 0 20 20" width="20" height="20"><rect x="6" y="6" width="8" height="8" rx="1.5" fill="currentColor"/></svg>
+          <span class="tool-label">Pilar</span>
+        </button>
+        <button id="tool-stairs" class="tool-btn" data-tool="stairs" title="Adicionar escada — R para rotacionar (T)">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 17h4v-4h3v-3h3v-3h4"/></svg>
+          <span class="tool-label">Escada</span>
+        </button>
+      </div>
+
+      <div class="tool-section">
+        <div class="tool-section-label">Moveis</div>
+        <button id="tool-furniture" class="tool-btn" data-tool="furniture" title="Abrir catalogo de moveis para posicionar (F)">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8h12v5H4z"/><path d="M6 8V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v3"/><path d="M4 13v3"/><path d="M16 13v3"/><line x1="4" y1="10" x2="16" y2="10" stroke-dasharray="2 1.5" opacity="0.5"/></svg>
+          <span class="tool-label">Mobiliar</span>
+        </button>
+        <button id="tool-eraser" class="tool-btn" data-tool="eraser" title="Clique em qualquer elemento para apagar (E)">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7l-5 5-4 4H4l-1-1 5-5 3-3z"/><path d="M11 12l-4-4"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
+          <span class="tool-label">Apagar</span>
+        </button>
+      </div>
+
+      <div class="tool-section">
+        <div class="tool-section-label">Anotar</div>
+        <button id="tool-note" class="tool-btn" data-tool="note" title="Adicionar observacao em qualquer ponto do plano (N)">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="12" height="14" rx="1.5"/><line x1="7" y1="7" x2="13" y2="7"/><line x1="7" y1="10" x2="13" y2="10"/><line x1="7" y1="13" x2="10" y2="13"/></svg>
+          <span class="tool-label">Nota</span>
+        </button>
+        <button id="tool-measure" class="tool-btn" data-tool="measure" title="Medir distancia entre dois pontos (M)">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="7" width="16" height="6" rx="1"/><line x1="5" y1="7" x2="5" y2="10"/><line x1="8" y1="7" x2="8" y2="9"/><line x1="11" y1="7" x2="11" y2="10"/><line x1="14" y1="7" x2="14" y2="9"/></svg>
+          <span class="tool-label">Medir</span>
+        </button>
+        <button id="tool-dimension" class="tool-btn" data-tool="dimension" title="Adicionar cota fixa entre dois pontos (C)">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="4" y1="10" x2="16" y2="10"/><path d="M4 10l3-2.5v5z" fill="currentColor" stroke="none"/><path d="M16 10l-3-2.5v5z" fill="currentColor" stroke="none"/><line x1="4" y1="6" x2="4" y2="14" opacity="0.4"/><line x1="16" y1="6" x2="16" y2="14" opacity="0.4"/></svg>
+          <span class="tool-label">Cota</span>
+        </button>
+      </div>
+
+      <div class="tool-section">
+        <div class="tool-section-label">Ver</div>
+        <button id="btn-zoom-in" class="tool-btn" title="Aproximar">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="5.5"/><line x1="13" y1="13" x2="17" y2="17" stroke-linecap="round"/><line x1="6.5" y1="9" x2="11.5" y2="9"/><line x1="9" y1="6.5" x2="9" y2="11.5"/></svg>
+          <span class="tool-label">Zoom +</span>
+        </button>
+        <button id="btn-zoom-out" class="tool-btn" title="Afastar">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="5.5"/><line x1="13" y1="13" x2="17" y2="17" stroke-linecap="round"/><line x1="6.5" y1="9" x2="11.5" y2="9"/></svg>
+          <span class="tool-label">Zoom -</span>
+        </button>
+        <div class="tool-sep"></div>
+        <button id="btn-view-top" class="tool-btn" data-view="top" title="Vista de cima (planta baixa)">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="14" height="14" rx="1"/><circle cx="10" cy="10" r="2" fill="currentColor" stroke="none"/></svg>
+          <span class="tool-label">Cima</span>
+        </button>
+        <button id="btn-view-front" class="tool-btn" data-view="front" title="Vista frontal do projeto">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="6" width="12" height="11" rx="1"/><line x1="4" y1="3" x2="7" y2="6" opacity="0.5"/><line x1="16" y1="3" x2="13" y2="6" opacity="0.5"/></svg>
+          <span class="tool-label">Frente</span>
+        </button>
+        <button id="btn-view-3d" class="tool-btn" data-view="3d" title="Vista 3D em perspectiva">
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l7 4v8l-7 4-7-4V6z"/><path d="M10 10l7-4M10 10v8M10 10L3 6" opacity="0.5"/></svg>
+          <span class="tool-label">3D</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ─── PLANS SIDEBAR (overlay) ─── -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <h2>Meus Projetos</h2>
+        <button id="btn-new-plan" class="small-btn" title="Criar novo projeto">
+          <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
+          Novo
+        </button>
+      </div>
+      <ul id="plan-list"></ul>
+      <div id="plan-list-empty" class="empty-state">Nenhum projeto encontrado</div>
+    </aside>
+
+    <!-- ─── CANVAS ─── -->
+    <div id="canvas-container">
+      <canvas id="three-canvas"></canvas>
+      <canvas id="editor-canvas"></canvas>
+
+      <div id="loading-overlay" class="overlay hidden">
+        <div class="spinner"></div>
+        <span>Carregando projeto...</span>
+      </div>
+
+      <!-- WELCOME SCREEN — shown when no plan is loaded -->
+      <div id="empty-overlay" class="overlay welcome-overlay">
+        <div class="welcome-card">
+          <div class="welcome-logo">
+            <div class="welcome-logo-icon">P3D</div>
+            <h1 class="welcome-title">Planta 3D</h1>
+            <p class="welcome-subtitle">Crie plantas de ambientes em 2D e 3D para seus projetos de marcenaria</p>
+          </div>
+
+          <div class="welcome-actions">
+            <button id="welcome-new" class="welcome-btn welcome-btn--primary">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span class="welcome-btn-text">
+                <strong>Novo Projeto</strong>
+                <small>Comece do zero</small>
+              </span>
+            </button>
+            <button id="welcome-open" class="welcome-btn">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <span class="welcome-btn-text">
+                <strong>Abrir Projeto</strong>
+                <small>Continuar um existente</small>
+              </span>
+            </button>
+            <button id="welcome-example" class="welcome-btn">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+              <span class="welcome-btn-text">
+                <strong>Ver Exemplo</strong>
+                <small>Explore um projeto pronto</small>
+              </span>
+            </button>
+          </div>
+
+          <div class="welcome-tutorial-link">
+            <a href="/tutorial.html" class="welcome-tutorial-btn">
+              <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7"/><path d="M7.5 7.5a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3.5"/><circle cx="10" cy="15" r="0.5" fill="currentColor"/></svg>
+              Primeira vez? Veja o tutorial completo
+            </a>
+          </div>
+
+          <div class="welcome-templates">
+            <h3 class="welcome-section-title">Comecar com template</h3>
+            <div class="template-grid">
+              <button class="template-card" data-template="cozinha">
+                <div class="template-icon">
+                  <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4" y="8" width="24" height="16" rx="2"/><line x1="4" y1="14" x2="28" y2="14"/><circle cx="10" cy="11" r="1.5"/><circle cx="16" cy="11" r="1.5"/><circle cx="22" cy="11" r="1.5"/><rect x="7" y="17" width="5" height="4" rx="0.5"/></svg>
+                </div>
+                <span>Cozinha</span>
+              </button>
+              <button class="template-card" data-template="quarto">
+                <div class="template-icon">
+                  <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4" y="12" width="24" height="10" rx="2"/><rect x="6" y="8" width="9" height="4" rx="1"/><rect x="17" y="8" width="9" height="4" rx="1"/><line x1="4" y1="22" x2="4" y2="25"/><line x1="28" y1="22" x2="28" y2="25"/></svg>
+                </div>
+                <span>Quarto</span>
+              </button>
+              <button class="template-card" data-template="sala">
+                <div class="template-icon">
+                  <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4" y="10" width="16" height="10" rx="2"/><rect x="2" y="12" width="2" height="6" rx="1"/><rect x="20" y="12" width="2" height="6" rx="1"/><rect x="25" y="8" width="5" height="14" rx="1"/></svg>
+                </div>
+                <span>Sala</span>
+              </button>
+              <button class="template-card" data-template="banheiro">
+                <div class="template-icon">
+                  <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="6" y="4" width="10" height="14" rx="5"/><rect x="4" y="18" width="24" height="2" rx="1"/><rect x="6" y="20" width="20" height="6" rx="1"/><line x1="6" y1="26" x2="6" y2="28"/><line x1="26" y1="26" x2="26" y2="28"/></svg>
+                </div>
+                <span>Banheiro</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── RIGHT PANELS ─── -->
+    <div class="right-panels">
+      <!-- Properties Panel -->
+      <aside id="properties-panel" class="hidden">
+        <div class="panel-header">
+          <h2>Propriedades</h2>
+          <button id="btn-close-properties" class="panel-close-btn" title="Fechar">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>
+          </button>
+        </div>
+        <div id="properties-content"></div>
+      </aside>
+
+      <!-- Furniture Panel -->
+      <aside id="furniture-panel" class="hidden">
+        <div class="panel-header">
+          <h2>Catalogo de Moveis</h2>
+          <button id="btn-close-furniture" class="panel-close-btn" title="Fechar">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>
+          </button>
+        </div>
+        <div id="furniture-search-box">
+          <svg class="search-icon" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14" stroke-linecap="round"/></svg>
+          <input type="text" id="furniture-search" placeholder="Buscar movel..." />
+        </div>
+        <div id="furniture-categories"></div>
+        <div id="furniture-items"></div>
+      </aside>
+
+      <!-- Annotations Panel -->
+      <aside id="annotations-panel">
+        <div class="panel-header">
+          <h2>Anotacoes</h2>
+          <button id="btn-export-annotations" class="small-btn" title="Exportar anotacoes como JSON">
+            <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v3h10v-3"/><path d="M8 2v8"/><path d="M5 7l3 3 3-3"/></svg>
+            Exportar
+          </button>
+        </div>
+        <div id="annotations-list"></div>
+        <div id="annotations-empty" class="empty-state">Nenhuma anotacao ainda</div>
+      </aside>
+    </div>
+
+  </div>
+
+  <!-- ═══ STATUS BAR ═══ -->
+  <footer id="status-bar">
+    <div id="tool-status" class="tool-status"></div>
+    <div class="status-right">
+      <span class="status-tag">P3D</span>
+      <span class="status-sep">|</span>
+      <span class="status-label">SOMA-ID</span>
+    </div>
+  </footer>
+
+  <!-- ═══ ONBOARDING TOUR ═══ -->
+  <div id="onboarding-overlay" class="onboarding-overlay hidden">
+    <div class="onboarding-backdrop"></div>
+    <div class="onboarding-card" id="onboarding-card">
+      <div class="onboarding-progress">
+        <span class="onboarding-step-indicator"></span>
+      </div>
+      <div class="onboarding-body">
+        <h3 class="onboarding-title"></h3>
+        <p class="onboarding-text"></p>
+      </div>
+      <div class="onboarding-footer">
+        <button class="onboarding-skip">Pular tour</button>
+        <button class="onboarding-next">Proximo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ HELP MODAL ═══ -->
+  <div id="help-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Atalhos de Teclado</h2>
+        <button class="modal-close" id="help-modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="shortcut-group">
+          <h4>Ferramentas</h4>
+          <div class="shortcut-row"><kbd>V</kbd><span>Selecionar</span></div>
+          <div class="shortcut-row"><kbd>W</kbd><span>Parede</span></div>
+          <div class="shortcut-row"><kbd>D</kbd><span>Porta</span></div>
+          <div class="shortcut-row"><kbd>J</kbd><span>Janela</span></div>
+          <div class="shortcut-row"><kbd>F</kbd><span>Moveis</span></div>
+          <div class="shortcut-row"><kbd>O</kbd><span>Sala</span></div>
+          <div class="shortcut-row"><kbd>E</kbd><span>Apagar</span></div>
+          <div class="shortcut-row"><kbd>N</kbd><span>Nota</span></div>
+          <div class="shortcut-row"><kbd>M</kbd><span>Medir</span></div>
+          <div class="shortcut-row"><kbd>C</kbd><span>Cota</span></div>
+        </div>
+        <div class="shortcut-group">
+          <h4>Geral</h4>
+          <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>Desfazer</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+Shift+Z</kbd><span>Refazer</span></div>
+          <div class="shortcut-row"><kbd>R</kbd><span>Rotacionar (moveis/escada)</span></div>
+          <div class="shortcut-row"><kbd>ESC</kbd><span>Cancelar acao</span></div>
+          <div class="shortcut-row"><kbd>S</kbd><span>Snap on/off</span></div>
+        </div>
+        <div class="modal-tutorial-link">
+          <a href="/tutorial.html" target="_blank">Ver tutorial completo</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
+  <script src="/OrbitControls.js"></script>
+
+  <!-- Foundation -->
+  <script src="/event-bus.js"></script>
+  <script src="/data-model.js"></script>
+  <script src="/undo-manager.js"></script>
+  <script src="/canvas-interaction.js"></script>
+  <script src="/hit-testing.js"></script>
+
+  <!-- Data -->
+  <script src="/furniture-catalog.js"></script>
+  <script src="/material-system.js"></script>
+  <script src="/furniture-icons.js"></script>
+  <script src="/furniture-models-3d.js"></script>
+
+  <!-- Rendering -->
+  <script src="/canvas-renderer.js"></script>
+
+  <!-- Infrastructure -->
+  <script src="/plugin-manager.js"></script>
+
+  <!-- Existing (modified) -->
+  <script src="/three-scene.js"></script>
+  <script src="/floor-plan.js"></script>
+  <script src="/controls.js"></script>
+  <script src="/annotations.js"></script>
+
+  <!-- Editor -->
+  <script src="/editor-2d.js"></script>
+
+  <!-- App (last) -->
+  <script src="/app.js"></script>
+
+  <!-- UX Enhancements (welcome, onboarding, help — no conflict with existing JS) -->
+  <script src="/ux-enhancements.js"></script>
+</body>
+</html>

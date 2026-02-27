@@ -71,24 +71,8 @@ window.App = (() => {
     // Quick Tools Menu Toggle
     document.getElementById('btn-quick-tools-toggle').addEventListener('click', toggleQuickToolsMenu);
 
-    // 2D/3D toggle
-    document.getElementById('btn-2d3d').addEventListener('click', () => {
-      const btn = document.getElementById('btn-2d3d');
-      const currentIs2D = App.is2D(); // Assuming App.is2D() exists and returns current mode
-      App.set2DMode(!currentIs2D);
-      btn.textContent = App.is2D() ? '3D' : '2D';
-      btn.classList.toggle('active', !App.is2D()); // 3D is active view
-    });
-
-    // Grid toggle
-    document.getElementById('btn-grid').addEventListener('click', () => {
-      const gridBtn = document.getElementById('btn-grid');
-      const currentShowGrid = Editor2D.getViewState().showGrid; // Assuming Editor2D.getViewState() exists
-      Editor2D.toggleGrid(!currentShowGrid); // Assuming Editor2D.toggleGrid exists
-      gridBtn.classList.toggle('active', !currentShowGrid);
-      setStatus(!currentShowGrid ? 'Grade ativada' : 'Grade desativada');
-      setTimeout(() => setStatus(''), 1500);
-    });
+    // NOTE: btn-2d3d and btn-grid listeners are handled by controls.js
+    // to avoid double-binding which causes conflicting state toggles.
 
     // Furniture panel close
     document.getElementById('btn-close-furniture').addEventListener('click', closeFurniturePanel);

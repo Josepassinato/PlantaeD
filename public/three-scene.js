@@ -70,7 +70,7 @@ const ThreeScene = (() => {
     // PBR tone mapping for more realistic look
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
-    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     // Scene
     scene = new THREE.Scene();

@@ -23,7 +23,8 @@ const Editor2D = (() => {
     drawingDimension: null,
     drawingRoom: null,
     placingColumn: null,
-    placingStairs: null
+    placingStairs: null,
+    fadingOutElements: [] // New array to hold elements fading out
   };
 
   // Tool state
@@ -36,6 +37,25 @@ const Editor2D = (() => {
   let dimensionStart = null;
   let roomVertices = null;
   let snapEnabled = true;
+
+  // Long press state
+  let longPressTimer = null;
+  const LONG_PRESS_TIMEOUT = 500; // ms
+  const LONG_PRESS_MOVE_THRESHOLD = 10; // pixels
+  let touchStartPos = { x: 0, y: 0 };
+  let lastTapTime = 0;
+  let tapTimeout = null;
+  const TAP_MAX_DELAY = 300; // ms for double tap
+  const DOUBLE_TAP_MOVE_THRESHOLD = 15; // pixels
+
+  // Inertia state
+  let panVelocity = { x: 0, y: 0 };
+  let zoomVelocity = 0;
+  let lastTouchTime = 0;
+  let lastPan = { x: 0, y: 0 };
+  let lastZoom = 0;
+  let inertiaRafId = null;
+
 
   function init() {
     canvas = document.getElementById('editor-canvas');
@@ -245,33 +265,46 @@ const Editor2D = (() => {
 
   function onDblClick(e) {
     if (!active || !plan) return;
-    const world = getWorldPos(e.clientX, e.clientY);
-
-    if (currentTool === 'select') {
-      const hit = HitTesting.findElementAt(world.x, world.y, plan);
-      if (hit) {
-        EventBus.emit('element:properties', hit);
-      }
-    }
-
-    // Room tool: double-click closes polygon
+    // For desktop, still allow dblclick for room tool
     if (currentTool === 'room' && roomVertices && roomVertices.length >= 3) {
       e.preventDefault();
       finishRoom();
     }
+    // Dblclick for select tool will be replaced by long press on mobile
   }
 
   // Touch support
   let lastTouchDist = 0;
   function onTouchStart(e) {
-    if (!active) return;
+    if (!active || !plan) return;
     if (e.touches.length === 2) {
       e.preventDefault();
       lastTouchDist = getTouchDist(e.touches);
       panStart = { x: (e.touches[0].clientX + e.touches[1].clientX) / 2, y: (e.touches[0].clientY + e.touches[1].clientY) / 2 };
       panStartOffset = { ...viewState.pan };
+      clearLongPressTimer(); // Cancel long press if multi-touch
     } else if (e.touches.length === 1) {
-      onMouseDown({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, button: 0, shiftKey: false, preventDefault: () => {} });
+      const touch = e.touches[0];
+      touchStartPos = { x: touch.clientX, y: touch.clientY };
+      longPressTimer = setTimeout(() => {
+        handleLongPress(touch);
+        longPressTimer = null; // Clear timer after execution
+      }, LONG_PRESS_TIMEOUT);
+      // Do not simulate mousedown immediately for single touch, wait for tap confirmation
+
+      const now = performance.now();
+      if (now - lastTapTime < TAP_MAX_DELAY) {
+        // This is a double tap candidate
+        clearTimeout(tapTimeout);
+        tapTimeout = null;
+        handleDoubleTap(touch);
+      } else {
+        tapTimeout = setTimeout(() => {
+          handleSingleTap(touch);
+          tapTimeout = null;
+        }, TAP_MAX_DELAY);
+      }
+      lastTapTime = now;
     }
   }
 
@@ -285,17 +318,37 @@ const Editor2D = (() => {
       viewState.zoom = Math.max(10, Math.min(300, viewState.zoom * factor));
       viewState.pan.x = panStartOffset.x + (mid.x - panStart.x);
       viewState.pan.y = panStartOffset.y + (mid.y - panStart.y);
-      lastTouchDist = dist;
+      // Calculate velocity for inertia
+      const now = performance.now();
+      const dt = now - lastTouchTime;
+      if (dt > 0) {
+        panVelocity.x = (viewState.pan.x - lastPan.x) / dt;
+        panVelocity.y = (viewState.pan.y - lastPan.y) / dt;
+        zoomVelocity = (viewState.zoom - lastZoom) / dt;
+      }
+      lastPan = { ...viewState.pan };
+      lastZoom = viewState.zoom;
+      lastTouchTime = now;
       dirty = true;
     } else if (e.touches.length === 1) {
-      onMouseMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, shiftKey: false });
+      const touch = e.touches[0];
+      // Check for significant movement to cancel long press
+      const dx = touch.clientX - touchStartPos.x;
+      const dy = touch.clientY - touchStartPos.y;
+      if (longPressTimer && Math.sqrt(dx * dx + dy * dy) > LONG_PRESS_MOVE_THRESHOLD) {
+        clearLongPressTimer();
+      }
+      onMouseMove({ clientX: touch.clientX, clientY: touch.clientY, shiftKey: false });
     }
   }
 
   function onTouchEnd(e) {
+    clearLongPressTimer(); // Clear any pending long press timer
     panStart = null;
     panStartOffset = null;
     isMouseDown = false;
+    if (inertiaRafId) cancelAnimationFrame(inertiaRafId);
+    inertiaRafId = requestAnimationFrame(applyInertia); // Start inertia
   }
 
   function getTouchDist(touches) {
@@ -304,7 +357,51 @@ const Editor2D = (() => {
     return Math.sqrt(dx * dx + dy * dy);
   }
 
+  function clearLongPressTimer() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }
+
+  function handleLongPress(touch) {
+    if (!active || !plan || currentTool !== 'select') return;
+
+    const world = getWorldPos(touch.clientX, touch.clientY);
+    const hit = HitTesting.findElementAt(world.x, world.y, plan);
+    if (hit) {
+      viewState.selection = hit; // Select the element
+      EventBus.emit('element:selected', hit); // Emit selected event
+      EventBus.emit('element:show-context-menu', { element: hit, clientX: touch.clientX, clientY: touch.clientY }); // Show context menu
+      dirty = true;
+    }
+  }
+
+  function handleSingleTap(touch) {
+    if (!active || !plan) return;
+    // Simulate mousedown for single tap to handle tools
+    onMouseDown({ clientX: touch.clientX, clientY: touch.clientY, button: 0, shiftKey: false, preventDefault: () => {} });
+  }
+
+  function handleDoubleTap(touch) {
+    if (!active || !plan) return;
+    const world = getWorldPos(touch.clientX, touch.clientY);
+    const hit = HitTesting.findElementAt(world.x, world.y, plan);
+
+    if (hit && viewState.selection && viewState.selection.element.id === hit.element.id) {
+      // Only open properties if the double-tapped element is already selected
+      EventBus.emit('element:edit-properties', hit.element);
+    } else if (hit) {
+      // If a different element is double-tapped, select it first
+      viewState.selection = hit;
+      EventBus.emit('element:selected', hit);
+      EventBus.emit('element:edit-properties', hit.element);
+    }
+    dirty = true;
+  }
+
   // ---- Tool Handlers ----
+
 
   function handleToolMouseDown(world, e) {
     const snapped = snapEnabled ? CanvasInteraction.magneticSnap(world, plan.walls || []) : world;
@@ -529,7 +626,9 @@ const Editor2D = (() => {
       rotation: viewState.placingFurniture.rotation || 0,
       scale: { x: 1, y: 1, z: 1 },
       color: null,
-      locked: false
+      locked: false,
+      _animationStartTime: performance.now(), // For smooth animation
+      _animationDuration: 300 // ms
     };
     plan.furniture.push(furn);
     EventBus.emit('furniture:placed', furn);
@@ -692,40 +791,66 @@ const Editor2D = (() => {
     if (!hit) return;
 
     UndoManager.snapshot();
+    const animationDuration = 300; // ms for fade-out
+
+    // Function to mark an element for fade-out
+    const markForFadeOut = (element, type) => {
+      element._fadeStartTime = performance.now();
+      element._animationDuration = animationDuration;
+      element._type = type; // Store type for rendering and eventual removal
+      viewState.fadingOutElements.push(element);
+      dirty = true;
+    };
+
     switch (hit.type) {
       case 'wall':
-        // Also remove doors/windows on this wall
-        plan.doors = plan.doors.filter(d => d.wallId !== hit.element.id);
-        plan.windows = plan.windows.filter(w => w.wallId !== hit.element.id);
-        plan.walls = plan.walls.filter(w => w.id !== hit.element.id);
-        EventBus.emit('wall:deleted', hit.element);
+        // Mark wall for fade-out
+        markForFadeOut(hit.element, 'wall');
+        EventBus.emit('wall:deleted', hit.element); // Still emit for logic, but visual removed later
+
+        // Mark doors/windows on this wall for fade-out too
+        plan.doors.filter(d => d.wallId === hit.element.id).forEach(d => {
+          markForFadeOut(d, 'door');
+          EventBus.emit('door:deleted', d);
+        });
+        plan.windows.filter(w => w.wallId === hit.element.id).forEach(w => {
+          markForFadeOut(w, 'window');
+          EventBus.emit('window:deleted', w);
+        });
         break;
       case 'door':
-        plan.doors = plan.doors.filter(d => d.id !== hit.element.id);
+        markForFadeOut(hit.element, 'door');
+        EventBus.emit('door:deleted', hit.element);
         break;
       case 'window':
-        plan.windows = plan.windows.filter(w => w.id !== hit.element.id);
+        markForFadeOut(hit.element, 'window');
+        EventBus.emit('window:deleted', hit.element);
         break;
       case 'furniture':
-        plan.furniture = plan.furniture.filter(f => f.id !== hit.element.id);
+        markForFadeOut(hit.element, 'furniture');
+        EventBus.emit('furniture:deleted', hit.element);
         break;
       case 'column':
-        plan.columns = plan.columns.filter(c => c.id !== hit.element.id);
+        markForFadeOut(hit.element, 'column');
+        EventBus.emit('column:deleted', hit.element);
         break;
       case 'stairs':
-        plan.stairs = plan.stairs.filter(s => s.id !== hit.element.id);
+        markForFadeOut(hit.element, 'stairs');
+        EventBus.emit('stairs:deleted', hit.element);
         break;
       case 'dimension':
-        plan.dimensions = plan.dimensions.filter(d => d.id !== hit.element.id);
+        markForFadeOut(hit.element, 'dimension');
+        EventBus.emit('dimension:deleted', hit.element);
         break;
       case 'room':
-        plan.rooms = plan.rooms.filter(r => r.id !== hit.element.id);
+        markForFadeOut(hit.element, 'room');
+        EventBus.emit('room:deleted', hit.element);
         break;
     }
     viewState.selection = null;
     viewState.hoverElement = null;
-    dirty = true;
-    emitPlanChanged();
+    // Elements are NOT removed from plan here, they will be filtered out by renderLoop after animation
+    emitPlanChanged(); // Plan is conceptually changed, even if actual removal is delayed
   }
 
   // ---- Keyboard ----
@@ -790,7 +915,11 @@ const Editor2D = (() => {
         dirty = true;
       } else if (viewState.selection && viewState.selection.type === 'furniture') {
         UndoManager.snapshot();
-        viewState.selection.element.rotation = (viewState.selection.element.rotation || 0) + Math.PI / 4;
+        const currentRotation = viewState.selection.element.rotation || 0;
+        viewState.selection.element._startRotation = currentRotation;
+        viewState.selection.element._targetRotation = currentRotation + Math.PI / 4; // Rotate by 45 degrees
+        viewState.selection.element._rotationAnimationStartTime = performance.now();
+        viewState.selection.element._rotationAnimationDuration = 150; // 150ms for rotation animation
         dirty = true;
         emitPlanChanged();
       } else if (viewState.selection && viewState.selection.type === 'stairs') {
@@ -849,7 +978,63 @@ const Editor2D = (() => {
   }
 
   function renderLoop() {
-    if (active && dirty) {
+    let stillAnimating = false;
+    const now = performance.now();
+
+    if (active && plan) {
+      // Check for fade-in animations
+      if (plan.furniture) {
+        stillAnimating = plan.furniture.some(f => 
+          (f._animationStartTime && (now - f._animationStartTime < f._animationDuration)) ||
+          (f._rotationAnimationStartTime && (now - f._rotationAnimationStartTime < f._rotationAnimationDuration))
+        );
+      }
+      // Check for fade-out animations and handle removal
+      if (viewState.fadingOutElements.length > 0) {
+        stillAnimating = true; // Keep rendering while elements are fading out
+        const elementsToRemoveFromPlan = [];
+
+        viewState.fadingOutElements = viewState.fadingOutElements.filter(el => {
+          if (now - el._fadeStartTime >= el._animationDuration) {
+            elementsToRemoveFromPlan.push(el); // Mark for final removal
+            return false; // Remove from fadingOutElements
+          }
+          return true; // Still fading out
+        });
+
+        // Perform actual removal from plan based on type
+        elementsToRemoveFromPlan.forEach(el => {
+          switch (el._type) {
+            case 'wall':
+              plan.walls = plan.walls.filter(w => w.id !== el.id);
+              break;
+            case 'door':
+              plan.doors = plan.doors.filter(d => d.id !== el.id);
+              break;
+            case 'window':
+              plan.windows = plan.windows.filter(w => w.id !== el.id);
+              break;
+            case 'furniture':
+              plan.furniture = plan.furniture.filter(f => f.id !== el.id);
+              break;
+            case 'column':
+              plan.columns = plan.columns.filter(c => c.id !== el.id);
+              break;
+            case 'stairs':
+              plan.stairs = plan.stairs.filter(s => s.id !== el.id);
+              break;
+            case 'dimension':
+              plan.dimensions = plan.dimensions.filter(d => d.id !== el.id);
+              break;
+            case 'room':
+              plan.rooms = plan.rooms.filter(r => r.id !== el.id);
+              break;
+          }
+        });
+      }
+    }
+
+    if (active && (dirty || stillAnimating)) {
       CanvasRenderer.render(ctx, canvas, plan, viewState);
       dirty = false;
     }
@@ -872,14 +1057,51 @@ const Editor2D = (() => {
     return snapEnabled;
   }
 
+  function toggleGrid(enabled) {
+    viewState.showGrid = typeof enabled === 'boolean' ? enabled : !viewState.showGrid;
+    dirty = true;
+    EventBus.emit('grid:toggled', { enabled: viewState.showGrid });
+    return viewState.showGrid;
+  }
+
+  function applyInertia() {
+    const friction = 0.95; // Adjust for desired deceleration speed
+    const minVelocity = 0.05; // Stop when velocity is very low
+
+    panVelocity.x *= friction;
+    panVelocity.y *= friction;
+    zoomVelocity *= friction;
+
+    if (Math.abs(panVelocity.x) > minVelocity || Math.abs(panVelocity.y) > minVelocity) {
+      viewState.pan.x += panVelocity.x; // Use += for continuous application
+      viewState.pan.y += panVelocity.y;
+      dirty = true;
+    }
+
+    if (Math.abs(zoomVelocity) > minVelocity) {
+      const newZoom = viewState.zoom + zoomVelocity; // Apply velocity to zoom
+      viewState.zoom = Math.max(10, Math.min(300, newZoom)); // Keep zoom within limits
+      dirty = true;
+    }
+
+    if (dirty) {
+      inertiaRafId = requestAnimationFrame(applyInertia);
+    } else {
+      inertiaRafId = null;
+      panVelocity = { x: 0, y: 0 }; // Reset velocity when stopped
+      zoomVelocity = 0;
+    }
+  }
+
   function destroy() {
     if (rafId) cancelAnimationFrame(rafId);
+    if (inertiaRafId) cancelAnimationFrame(inertiaRafId);
     window.removeEventListener('resize', resize);
   }
 
   return {
     init, setPlan, setActive, setTool, setFurnitureToPlace,
     markDirty, resize, centerOnPlan, getCanvas, getViewState, getPlan,
-    getCurrentTool, isSnapEnabled, toggleSnap, destroy
+    getCurrentTool, isSnapEnabled, toggleSnap, toggleGrid, destroy
   };
 })();

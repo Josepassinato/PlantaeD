@@ -125,8 +125,15 @@ const CanvasRenderer = (() => {
 
   function drawRooms(ctx, plan) {
     if (!plan.rooms) return;
+    const now = performance.now();
     plan.rooms.forEach(room => {
-      if (!room.vertices || room.vertices.length < 3) return;
+      let originalAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = originalAlpha * getAnimationAlpha(room, now); // Apply fade-out
+
+      if (!room.vertices || room.vertices.length < 3) {
+        ctx.globalAlpha = originalAlpha; // Restore alpha before early exit
+        return;
+      }
 
       ctx.beginPath();
       ctx.moveTo(room.vertices[0].x, room.vertices[0].y);
@@ -160,6 +167,7 @@ const CanvasRenderer = (() => {
         ctx.fillStyle = 'rgba(158,158,158,0.8)';
         ctx.fillText(area.toFixed(1) + 'm\u00B2', c.x, c.y + 0.15);
       }
+      ctx.globalAlpha = originalAlpha; // Restore original alpha
     });
   }
 
@@ -169,12 +177,19 @@ const CanvasRenderer = (() => {
   }
 
   function drawWall(ctx, wall, plan) {
+    const now = performance.now();
+    let originalAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = originalAlpha * getAnimationAlpha(wall, now);
+
     const t = wall.thickness || (plan ? plan.wallThickness : 0.15) || 0.15;
     const sx = wall.start.x, sy = wall.start.y;
     const ex = wall.end.x, ey = wall.end.y;
     const dx = ex - sx, dy = ey - sy;
     const len = Math.sqrt(dx * dx + dy * dy);
-    if (len < 0.01) return;
+    if (len < 0.01) {
+      ctx.globalAlpha = originalAlpha;
+      return; // Restore alpha before early exit
+    }
 
     // Normal perpendicular
     const nx = -dy / len * (t / 2);
@@ -193,6 +208,7 @@ const CanvasRenderer = (() => {
     ctx.strokeStyle = COLORS.wallStroke;
     ctx.lineWidth = 0.02;
     ctx.stroke();
+    ctx.globalAlpha = originalAlpha; // Restore original alpha
   }
 
   function drawDoors(ctx, plan) {
@@ -202,16 +218,31 @@ const CanvasRenderer = (() => {
 
   function drawDoorOnWall(ctx, door, plan) {
     const wall = plan.walls.find(w => w.id === door.wallId);
-    if (!wall) return;
+    // If the wall is fading out, or already gone, this door also fades out.
+    // Or if the door itself is marked for fade out.
+    const now = performance.now();
+    let originalAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = originalAlpha * getAnimationAlpha(door, now);
+    if (wall && wall._fadeStartTime) {
+      ctx.globalAlpha = originalAlpha * getAnimationAlpha(wall, now);
+    }
 
-    const sx = wall.start.x, sy = wall.start.y;
-    const ex = wall.end.x, ey = wall.end.y;
+    if (!wall && !door._fadeStartTime) {
+      ctx.globalAlpha = originalAlpha; // Restore alpha before early exit if no wall and not fading itself
+      return;
+    }
+
+    const sx = wall ? wall.start.x : 0, sy = wall ? wall.start.y : 0; // Use 0 if wall is null
+    const ex = wall ? wall.end.x : 0, ey = wall ? wall.end.y : 0; // Use 0 if wall is null
     const dx = ex - sx, dy = ey - sy;
     const len = Math.sqrt(dx * dx + dy * dy);
-    if (len < 0.01) return;
+    if (len < 0.01 && !door._fadeStartTime) {
+      ctx.globalAlpha = originalAlpha;
+      return; // Restore alpha before early exit
+    }
 
     const nx = dx / len, ny = dy / len;
-    const t = wall.thickness || plan.wallThickness || 0.15;
+    const t = (wall ? wall.thickness : 0) || (plan ? plan.wallThickness : 0.15) || 0.15;
     const pos = door.position || 0;
     const w = door.width || 0.9;
 
@@ -224,7 +255,7 @@ const CanvasRenderer = (() => {
     const perpY = nx * (t / 2 + 0.01);
     const hw = w / 2;
 
-    ctx.fillStyle = '#0f0f1a';
+    ctx.fillStyle = '#0f0f1a'; // Background color for clearing
     ctx.beginPath();
     ctx.moveTo(cx - nx * hw + perpX, cy - ny * hw + perpY);
     ctx.lineTo(cx + nx * hw + perpX, cy + ny * hw + perpY);
@@ -250,6 +281,8 @@ const CanvasRenderer = (() => {
     ctx.beginPath();
     ctx.arc(startX, startY, w, angle, angle + Math.PI / 2, false);
     ctx.stroke();
+
+    ctx.globalAlpha = originalAlpha; // Restore original alpha
   }
 
   function drawWindows(ctx, plan) {
@@ -259,16 +292,31 @@ const CanvasRenderer = (() => {
 
   function drawWindowOnWall(ctx, win, plan) {
     const wall = plan.walls.find(w => w.id === win.wallId);
-    if (!wall) return;
+    // If the wall is fading out, or already gone, this window also fades out.
+    // Or if the window itself is marked for fade out.
+    const now = performance.now();
+    let originalAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = originalAlpha * getAnimationAlpha(win, now);
+    if (wall && wall._fadeStartTime) {
+      ctx.globalAlpha = originalAlpha * getAnimationAlpha(wall, now);
+    }
 
-    const sx = wall.start.x, sy = wall.start.y;
-    const ex = wall.end.x, ey = wall.end.y;
+    if (!wall && !win._fadeStartTime) {
+      ctx.globalAlpha = originalAlpha; // Restore alpha before early exit if no wall and not fading itself
+      return;
+    }
+
+    const sx = wall ? wall.start.x : 0, sy = wall ? wall.start.y : 0;
+    const ex = wall ? wall.end.x : 0, ey = wall ? wall.end.y : 0;
     const dx = ex - sx, dy = ey - sy;
     const len = Math.sqrt(dx * dx + dy * dy);
-    if (len < 0.01) return;
+    if (len < 0.01 && !win._fadeStartTime) {
+      ctx.globalAlpha = originalAlpha;
+      return;
+    }
 
     const nx = dx / len, ny = dy / len;
-    const t = wall.thickness || plan.wallThickness || 0.15;
+    const t = (wall ? wall.thickness : 0) || (plan ? plan.wallThickness : 0.15) || 0.15;
     const pos = win.position || 0;
     const w = win.width || 1.2;
     const perpX = -ny * (t / 2 + 0.01);
@@ -311,15 +359,24 @@ const CanvasRenderer = (() => {
     ctx.moveTo(p1x, p1y);
     ctx.lineTo(p2x, p2y);
     ctx.stroke();
+
+    ctx.globalAlpha = originalAlpha; // Restore original alpha
   }
 
   function drawDimensions(ctx, plan) {
     if (!plan.dimensions) return;
+    const now = performance.now();
     plan.dimensions.forEach(dim => {
+      let originalAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = originalAlpha * getAnimationAlpha(dim, now); // Apply fade-out
+
       const s = dim.start, e = dim.end;
       const dx = e.x - s.x, dy = e.y - s.y;
       const len = Math.sqrt(dx * dx + dy * dy);
-      if (len < 0.01) return;
+      if (len < 0.01) {
+        ctx.globalAlpha = originalAlpha;
+        return; // Restore alpha before early exit
+      }
 
       const offset = dim.offset || -0.5;
       const px = -dy / len * offset;
@@ -352,12 +409,18 @@ const CanvasRenderer = (() => {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
       ctx.fillText(label, mx, my - 0.05);
+
+      ctx.globalAlpha = originalAlpha; // Restore original alpha
     });
   }
 
   function drawAnnotations2D(ctx, plan) {
     if (!plan.annotations) return;
+    const now = performance.now();
     plan.annotations.forEach(ann => {
+      let originalAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = originalAlpha * getAnimationAlpha(ann, now); // Apply fade-out
+
       if (ann.type === 'note') {
         ctx.fillStyle = ann.color || COLORS.noteMarker;
         ctx.beginPath();
@@ -395,17 +458,46 @@ const CanvasRenderer = (() => {
         ctx.textBaseline = 'bottom';
         ctx.fillText(ann.value + (ann.unit || 'm'), mx, my - 0.1);
       }
+      ctx.globalAlpha = originalAlpha; // Restore original alpha
     });
   }
 
   function drawFurniture(ctx, plan) {
     if (!plan.furniture) return;
+    const now = performance.now();
     plan.furniture.forEach(f => {
       const item = FurnitureCatalog.getItem(f.catalogId);
       if (!item) return;
       const w = item.width * (f.scale ? f.scale.x : 1);
       const d = item.depth * (f.scale ? f.scale.z || f.scale.y : 1);
-      FurnitureIcons.draw(ctx, f.catalogId, f.position.x, f.position.y, w, d, f.rotation, f.color || item.color);
+
+      let originalAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = originalAlpha * getAnimationAlpha(f, now); // Apply fade-in or fade-out
+
+      ctx.save();
+      ctx.translate(f.position.x, f.position.y);
+
+      let currentRotation = f.rotation || 0;
+      if (f._rotationAnimationStartTime && (now - f._rotationAnimationStartTime < f._rotationAnimationDuration)) {
+        const elapsed = now - f._rotationAnimationStartTime;
+        const progress = Math.min(1, elapsed / f._rotationAnimationDuration);
+        currentRotation = f._startRotation + (f._targetRotation - f._startRotation) * progress;
+        dirty = true; // Ensure render loop continues for animation
+      } else if (f._rotationAnimationStartTime) {
+        // Animation finished, set final rotation and clean up
+        currentRotation = f._targetRotation;
+        f.rotation = f._targetRotation; // Persist the final rotation
+        delete f._startRotation;
+        delete f._targetRotation;
+        delete f._rotationAnimationStartTime;
+        delete f._rotationAnimationDuration;
+      }
+
+      ctx.rotate(currentRotation);
+
+      FurnitureIcons.draw(ctx, f.catalogId, 0, 0, w, d, 0, f.color || item.color); // Draw at 0,0 since we translated
+      ctx.restore();
+      ctx.globalAlpha = originalAlpha; // Restore original alpha
     });
   }
 
@@ -413,10 +505,11 @@ const CanvasRenderer = (() => {
     if (!selection || !selection.type) return;
     const el = selection.element;
 
-    ctx.strokeStyle = COLORS.selection;
-    ctx.lineWidth = 0.04;
+    ctx.strokeStyle = COLORS.selection; // Primary selection color
+    ctx.lineWidth = 0.08; // Make selection border more prominent
     ctx.setLineDash([0.1, 0.06]);
 
+    // Draw selection outline based on element type
     if (selection.type === 'wall') {
       const t = el.thickness || (plan ? plan.wallThickness : 0.15) || 0.15;
       drawWallOutline(ctx, el, t);
@@ -428,6 +521,12 @@ const CanvasRenderer = (() => {
         ctx.save();
         ctx.translate(el.position.x, el.position.y);
         if (el.rotation) ctx.rotate(el.rotation);
+        
+        // Solid background for clarity
+        ctx.fillStyle = COLORS.selectionFill;
+        ctx.fillRect(-w / 2, -d / 2, w, d);
+
+        // Main selection stroke (dashed)
         ctx.strokeRect(-w / 2, -d / 2, w, d);
         ctx.restore();
         drawSelectionHandles(ctx, el, w, d);
@@ -445,11 +544,14 @@ const CanvasRenderer = (() => {
         ctx.stroke();
       }
     } else if (selection.type === 'column') {
-      drawColumnSelection(ctx, el);
-      return;
+      // Draw a solid background and then the dashed stroke
+      ctx.strokeStyle = COLORS.selection; // Keep the color
+      ctx.lineWidth = 0.04; // Thinner for inner stroke
+      drawColumnSelection(ctx, el); // This draws the dashed line
     } else if (selection.type === 'stairs') {
-      drawStairsSelection(ctx, el);
-      return;
+      ctx.strokeStyle = COLORS.selection; // Keep the color
+      ctx.lineWidth = 0.04; // Thinner for inner stroke
+      drawStairsSelection(ctx, el); // This draws the dashed line
     } else if (selection.type === 'dimension') {
       const s = el.start, e = el.end;
       ctx.fillStyle = COLORS.dimension;
@@ -528,12 +630,24 @@ const CanvasRenderer = (() => {
 
   function drawSnapPoints(ctx, points) {
     if (!points || points.length === 0) return;
-    ctx.fillStyle = COLORS.snap;
+    const now = performance.now();
+
+    ctx.strokeStyle = COLORS.snap;
+    ctx.lineWidth = 0.02;
+    ctx.setLineDash([0.05, 0.03]); // Dashed lines for guides
+
     points.forEach(p => {
+      // Draw extended snap lines (horizontal and vertical)
+      ctx.beginPath();
+      ctx.moveTo(p.x, -1000); ctx.lineTo(p.x, 1000); // Vertical guide
+      ctx.moveTo(-1000, p.y); ctx.lineTo(1000, p.y); // Horizontal guide
+      ctx.stroke();
+
+      // Draw the snap point marker (circle and cross)
+      ctx.fillStyle = COLORS.snap;
       ctx.beginPath();
       ctx.arc(p.x, p.y, 0.06, 0, Math.PI * 2);
       ctx.fill();
-      // Cross
       ctx.strokeStyle = COLORS.snap;
       ctx.lineWidth = 0.02;
       ctx.beginPath();
@@ -543,6 +657,8 @@ const CanvasRenderer = (() => {
       ctx.lineTo(p.x, p.y + 0.1);
       ctx.stroke();
     });
+
+    ctx.setLineDash([]); // Reset line dash
   }
 
   function drawDrawingWall(ctx, drawingWall) {
@@ -594,7 +710,11 @@ const CanvasRenderer = (() => {
 
   function drawColumns(ctx, plan) {
     if (!plan.columns) return;
+    const now = performance.now();
     plan.columns.forEach(col => {
+      let originalAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = originalAlpha * getAnimationAlpha(col, now); // Apply fade-out
+
       const s = col.size || 0.3;
       const x = col.position.x, y = col.position.y;
 
@@ -633,12 +753,17 @@ const CanvasRenderer = (() => {
         }
         ctx.stroke();
       }
+      ctx.globalAlpha = originalAlpha; // Restore original alpha
     });
   }
 
   function drawStairs(ctx, plan) {
     if (!plan.stairs) return;
+    const now = performance.now();
     plan.stairs.forEach(stair => {
+      let originalAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = originalAlpha * getAnimationAlpha(stair, now); // Apply fade-out
+
       const w = stair.width || 1.0;
       const d = stair.depth || 2.5;
       const steps = stair.steps || 12;
@@ -657,7 +782,6 @@ const CanvasRenderer = (() => {
       ctx.strokeRect(-w / 2, -d / 2, w, d);
 
       // Step lines
-      const stepDepth = d / steps;
       ctx.beginPath();
       for (let i = 1; i < steps; i++) {
         const sy = -d / 2 + i * stepDepth;
@@ -678,6 +802,7 @@ const CanvasRenderer = (() => {
       ctx.stroke();
 
       ctx.restore();
+      ctx.globalAlpha = originalAlpha; // Restore original alpha
     });
   }
 
@@ -831,15 +956,28 @@ const CanvasRenderer = (() => {
   // Selection drawing for new types
   function drawColumnSelection(ctx, col) {
     const s = col.size || 0.3;
+    const x = col.position.x, y = col.position.y;
+
+    // Draw solid background for column selection
+    ctx.fillStyle = COLORS.selectionFill;
+    if (col.shape === 'circular') {
+      ctx.beginPath();
+      ctx.arc(x, y, s / 2 + 0.06, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillRect(x - s / 2 - 0.06, y - s / 2 - 0.06, s + 0.12, s + 0.12);
+    }
+
+    // Draw main dashed selection stroke
     ctx.strokeStyle = COLORS.selection;
-    ctx.lineWidth = 0.04;
+    ctx.lineWidth = 0.08; // Match main selection width
     ctx.setLineDash([0.1, 0.06]);
     if (col.shape === 'circular') {
       ctx.beginPath();
-      ctx.arc(col.position.x, col.position.y, s / 2 + 0.04, 0, Math.PI * 2);
+      ctx.arc(x, y, s / 2 + 0.04, 0, Math.PI * 2);
       ctx.stroke();
     } else {
-      ctx.strokeRect(col.position.x - s / 2 - 0.04, col.position.y - s / 2 - 0.04, s + 0.08, s + 0.08);
+      ctx.strokeRect(x - s / 2 - 0.04, y - s / 2 - 0.04, s + 0.08, s + 0.08);
     }
     ctx.setLineDash([]);
   }
@@ -850,8 +988,14 @@ const CanvasRenderer = (() => {
     ctx.save();
     ctx.translate(stair.position.x, stair.position.y);
     ctx.rotate(stair.rotation || 0);
+
+    // Draw solid background for stairs selection
+    ctx.fillStyle = COLORS.selectionFill;
+    ctx.fillRect(-w / 2 - 0.06, -d / 2 - 0.06, w + 0.12, d + 0.12);
+
+    // Draw main dashed selection stroke
     ctx.strokeStyle = COLORS.selection;
-    ctx.lineWidth = 0.04;
+    ctx.lineWidth = 0.08; // Match main selection width
     ctx.setLineDash([0.1, 0.06]);
     ctx.strokeRect(-w / 2 - 0.04, -d / 2 - 0.04, w + 0.08, d + 0.08);
     ctx.setLineDash([]);
@@ -874,6 +1018,19 @@ const CanvasRenderer = (() => {
       area -= vertices[j].x * vertices[i].y;
     }
     return Math.abs(area / 2);
+  }
+
+  // Helper for animation alpha
+  function getAnimationAlpha(element, now) {
+    if (element._animationStartTime && (now - element._animationStartTime < element._animationDuration)) {
+      const elapsed = now - element._animationStartTime;
+      return Math.min(1, elapsed / element._animationDuration);
+    }
+    if (element._fadeStartTime && (now - element._fadeStartTime < element._animationDuration)) {
+      const elapsed = now - element._fadeStartTime;
+      return Math.max(0, 1 - (elapsed / element._animationDuration));
+    }
+    return 1; // Not animating
   }
 
   return { render, drawGrid, drawWall, drawRooms, drawColumns, drawStairs, COLORS };

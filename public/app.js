@@ -1,7 +1,7 @@
 /**
  * app.js — Global state, API helpers, toolbar, integration hub
  */
-const App = (() => {
+window.App = (() => {
   let currentPlan = null;
   let activeTool = 'select';
   let plans = [];
@@ -46,6 +46,11 @@ const App = (() => {
       btn.addEventListener('click', () => setTool(btn.dataset.tool));
     });
 
+    // Bottom toolbar tools (mobile)
+    document.querySelectorAll('#bottom-toolbar .tool-btn[data-tool]').forEach(btn => {
+      btn.addEventListener('click', () => setTool(btn.dataset.tool));
+    });
+
     // New plan
     document.getElementById('btn-new-plan').addEventListener('click', createNewPlan);
 
@@ -61,6 +66,28 @@ const App = (() => {
     document.getElementById('btn-snap').addEventListener('click', () => {
       const enabled = Editor2D.toggleSnap();
       document.getElementById('btn-snap').classList.toggle('active', enabled);
+    });
+
+    // Quick Tools Menu Toggle
+    document.getElementById('btn-quick-tools-toggle').addEventListener('click', toggleQuickToolsMenu);
+
+    // 2D/3D toggle
+    document.getElementById('btn-2d3d').addEventListener('click', () => {
+      const btn = document.getElementById('btn-2d3d');
+      const currentIs2D = App.is2D(); // Assuming App.is2D() exists and returns current mode
+      App.set2DMode(!currentIs2D);
+      btn.textContent = App.is2D() ? '3D' : '2D';
+      btn.classList.toggle('active', !App.is2D()); // 3D is active view
+    });
+
+    // Grid toggle
+    document.getElementById('btn-grid').addEventListener('click', () => {
+      const gridBtn = document.getElementById('btn-grid');
+      const currentShowGrid = Editor2D.getViewState().showGrid; // Assuming Editor2D.getViewState() exists
+      Editor2D.toggleGrid(!currentShowGrid); // Assuming Editor2D.toggleGrid exists
+      gridBtn.classList.toggle('active', !currentShowGrid);
+      setStatus(!currentShowGrid ? 'Grade ativada' : 'Grade desativada');
+      setTimeout(() => setStatus(''), 1500);
     });
 
     // Furniture panel close
@@ -221,7 +248,8 @@ const App = (() => {
     list.querySelectorAll('.plan-item-delete').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (confirm('Excluir este plano?')) {
+        const confirmed = await App.showCustomConfirm('Confirmar exclusao', 'Tem certeza que deseja excluir este plano? Esta acao nao pode ser desfeita.');
+        if (confirmed) {
           await deletePlan(btn.dataset.id);
         }
       });
@@ -297,7 +325,7 @@ const App = (() => {
   }
 
   async function createNewPlan() {
-    const name = prompt('Nome do plano:', 'Novo Plano');
+    const name = await App.showCustomPrompt('Nome do plano:', 'Novo Plano');
     if (!name) return;
 
     try {
@@ -355,6 +383,7 @@ const App = (() => {
 
   function setTool(tool) {
     activeTool = tool;
+    // Update all tool buttons (both side and bottom toolbars)
     document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tool === tool);
     });
@@ -398,6 +427,11 @@ const App = (() => {
 
   function showLoading(show) {
     document.getElementById('loading-overlay').classList.toggle('hidden', !show);
+  }
+
+  function toggleQuickToolsMenu() {
+    const menu = document.getElementById('quick-tools-menu');
+    menu.classList.toggle('hidden');
   }
 
   // ---- PNG Export ----
@@ -602,7 +636,7 @@ const App = (() => {
     }
 
     container.innerHTML = items.map(item => {
-      return `<div class="furn-item" data-catalog-id="${item.id}" title="${item.name} (${item.width}x${item.depth}m)">
+      return `<div class="furn-item large-furn-item" data-catalog-id="${item.id}" title="${item.name} (${item.width}x${item.depth}m)">
         <div class="furn-item-thumb" data-id="${item.id}"></div>
         <span class="furn-item-name">${item.name}</span>
         <span class="furn-item-dims">${item.width}x${item.depth}m</span>
@@ -674,14 +708,14 @@ const App = (() => {
       <div class="prop-group"><label>Tipo</label><p style="color:var(--text);font-size:13px">Parede</p></div>
       <div class="prop-group"><label>ID</label><p style="color:var(--text-secondary);font-size:12px">${wall.id}</p></div>
       <div class="prop-group"><label>Espessura (m)</label>
-        <input type="number" id="prop-wall-thickness" value="${wall.thickness || 0.15}" step="0.01" min="0.05" max="0.5">
+        ${buildStepperInput('prop-wall-thickness', wall.thickness || 0.15, 0.01, 0.05, 0.5)}
       </div>
       <div class="prop-group"><label>Altura (m)</label>
-        <input type="number" id="prop-wall-height" value="${wall.height || 2.8}" step="0.1" min="1" max="6">
+        ${buildStepperInput('prop-wall-height', wall.height || 2.8, 0.1, 1, 6)}
       </div>
       <div class="prop-group"><label>Cor</label>
         <div class="color-grid">
-          ${colors.map(c => `<div class="color-swatch ${wall.color === c.color ? 'active' : ''}" data-color="${c.color}" style="background:${c.color}" title="${c.name}"></div>`).join('')}
+          ${colors.map(c => `<div class="color-swatch large-color-swatch ${wall.color === c.color ? 'active' : ''}" data-color="${c.color}" style="background:${c.color}" title="${c.name}"></div>`).join('')}
         </div>
       </div>
     `;
@@ -696,7 +730,7 @@ const App = (() => {
       </div>
       <div class="prop-group"><label>Material do piso</label>
         <div class="material-grid">
-          ${materials.map(m => `<div class="material-option ${room.floorMaterial === m.id ? 'active' : ''}" data-material="${m.id}">
+          ${materials.map(m => `<div class="material-option large-material-option ${room.floorMaterial === m.id ? 'active' : ''}" data-material="${m.id}">
             <div class="mat-preview" style="background:${m.color}"></div>
             ${m.name}
           </div>`).join('')}
@@ -710,13 +744,13 @@ const App = (() => {
     return `
       <div class="prop-group"><label>Movel</label><p style="color:var(--text);font-size:13px">${item ? item.name : furn.catalogId}</p></div>
       <div class="prop-group"><label>Rotacao (graus)</label>
-        <input type="number" id="prop-furn-rotation" value="${Math.round((furn.rotation || 0) * 180 / Math.PI)}" step="15">
+        ${buildStepperInput('prop-furn-rotation', Math.round((furn.rotation || 0) * 180 / Math.PI), 15)}
       </div>
       <div class="prop-group"><label>Posicao X (m)</label>
-        <input type="number" id="prop-furn-x" value="${furn.position.x.toFixed(2)}" step="0.1">
+        ${buildStepperInput('prop-furn-x', furn.position.x.toFixed(2), 0.1)}
       </div>
       <div class="prop-group"><label>Posicao Y (m)</label>
-        <input type="number" id="prop-furn-y" value="${furn.position.y.toFixed(2)}" step="0.1">
+        ${buildStepperInput('prop-furn-y', furn.position.y.toFixed(2), 0.1)}
       </div>
     `;
   }
@@ -725,10 +759,10 @@ const App = (() => {
     return `
       <div class="prop-group"><label>Tipo</label><p style="color:var(--text);font-size:13px">Porta</p></div>
       <div class="prop-group"><label>Largura (m)</label>
-        <input type="number" id="prop-door-width" value="${door.width || 0.9}" step="0.1" min="0.5" max="3">
+        ${buildStepperInput('prop-door-width', door.width || 0.9, 0.1, 0.5, 3)}
       </div>
       <div class="prop-group"><label>Altura (m)</label>
-        <input type="number" id="prop-door-height" value="${door.height || 2.1}" step="0.1" min="1" max="3">
+        ${buildStepperInput('prop-door-height', door.height || 2.1, 0.1, 1, 3)}
       </div>
       <div class="prop-group"><label>Tipo</label>
         <select id="prop-door-type">
@@ -745,13 +779,13 @@ const App = (() => {
     return `
       <div class="prop-group"><label>Tipo</label><p style="color:var(--text);font-size:13px">Janela</p></div>
       <div class="prop-group"><label>Largura (m)</label>
-        <input type="number" id="prop-win-width" value="${win.width || 1.2}" step="0.1" min="0.3" max="4">
+        ${buildStepperInput('prop-win-width', win.width || 1.2, 0.1, 0.3, 4)}
       </div>
       <div class="prop-group"><label>Altura (m)</label>
-        <input type="number" id="prop-win-height" value="${win.height || 1.0}" step="0.1" min="0.3" max="3">
+        ${buildStepperInput('prop-win-height', win.height || 1.0, 0.1, 0.3, 3)}
       </div>
       <div class="prop-group"><label>Peitoril (m)</label>
-        <input type="number" id="prop-win-sill" value="${win.sillHeight || 1.0}" step="0.1" min="0" max="2">
+        ${buildStepperInput('prop-win-sill', win.sillHeight || 1.0, 0.1, 0, 2)}
       </div>
     `;
   }
@@ -766,16 +800,16 @@ const App = (() => {
         </select>
       </div>
       <div class="prop-group"><label>Tamanho (m)</label>
-        <input type="number" id="prop-col-size" value="${col.size || 0.3}" step="0.05" min="0.1" max="1.5">
+        ${buildStepperInput('prop-col-size', col.size || 0.3, 0.05, 0.1, 1.5)}
       </div>
       <div class="prop-group"><label>Altura (m)</label>
-        <input type="number" id="prop-col-height" value="${col.height || 2.8}" step="0.1" min="1" max="10">
+        ${buildStepperInput('prop-col-height', col.height || 2.8, 0.1, 1, 10)}
       </div>
       <div class="prop-group"><label>Posicao X (m)</label>
-        <input type="number" id="prop-col-x" value="${col.position.x.toFixed(2)}" step="0.1">
+        ${buildStepperInput('prop-col-x', col.position.x.toFixed(2), 0.1)}
       </div>
       <div class="prop-group"><label>Posicao Y (m)</label>
-        <input type="number" id="prop-col-y" value="${col.position.y.toFixed(2)}" step="0.1">
+        ${buildStepperInput('prop-col-y', col.position.y.toFixed(2), 0.1)}
       </div>
     `;
   }
@@ -784,16 +818,16 @@ const App = (() => {
     return `
       <div class="prop-group"><label>Tipo</label><p style="color:var(--text);font-size:13px">Escada</p></div>
       <div class="prop-group"><label>Largura (m)</label>
-        <input type="number" id="prop-stair-width" value="${stair.width || 1.0}" step="0.1" min="0.5" max="3">
+        ${buildStepperInput('prop-stair-width', stair.width || 1.0, 0.1, 0.5, 3)}
       </div>
       <div class="prop-group"><label>Profundidade (m)</label>
-        <input type="number" id="prop-stair-depth" value="${stair.depth || 2.5}" step="0.1" min="1" max="6">
+        ${buildStepperInput('prop-stair-depth', stair.depth || 2.5, 0.1, 1, 6)}
       </div>
       <div class="prop-group"><label>Degraus</label>
-        <input type="number" id="prop-stair-steps" value="${stair.steps || 12}" step="1" min="3" max="30">
+        ${buildStepperInput('prop-stair-steps', stair.steps || 12, 1, 3, 30)}
       </div>
       <div class="prop-group"><label>Rotacao (graus)</label>
-        <input type="number" id="prop-stair-rotation" value="${Math.round((stair.rotation || 0) * 180 / Math.PI)}" step="15">
+        ${buildStepperInput('prop-stair-rotation', Math.round((stair.rotation || 0) * 180 / Math.PI), 15)}
       </div>
       <div class="prop-group"><label>Tipo</label>
         <select id="prop-stair-type">
@@ -816,7 +850,7 @@ const App = (() => {
         <input type="text" id="prop-dim-label" value="${escHtml(dim.label || '')}">
       </div>
       <div class="prop-group"><label>Offset (m)</label>
-        <input type="number" id="prop-dim-offset" value="${dim.offset || -0.5}" step="0.1">
+        ${buildStepperInput('prop-dim-offset', dim.offset || -0.5, 0.1)}
       </div>
     `;
   }
@@ -903,6 +937,29 @@ const App = (() => {
       bindInput('prop-dim-label', v => { el.label = v; onChange(); });
       bindInput('prop-dim-offset', v => { el.offset = parseFloat(v); onChange(); });
     }
+
+    // Wire up stepper buttons
+    content.querySelectorAll('.stepper-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.dataset.targetId;
+        const input = document.getElementById(targetId);
+        if (!input) return;
+
+        const step = parseFloat(btn.dataset.step) || 1;
+        const min = btn.dataset.min !== '' ? parseFloat(btn.dataset.min) : -Infinity;
+        const max = btn.dataset.max !== '' ? parseFloat(btn.dataset.max) : Infinity;
+        let currentValue = parseFloat(input.value);
+
+        if (btn.classList.contains('stepper-btn--plus')) {
+          currentValue = Math.min(max, currentValue + step);
+        } else if (btn.classList.contains('stepper-btn--minus')) {
+          currentValue = Math.max(min, currentValue - step);
+        }
+
+        input.value = currentValue.toFixed(input.step.includes('.') ? input.step.split('.')[1].length : 0); // Format to match step decimal places
+        input.dispatchEvent(new Event('change')); // Trigger change event
+      });
+    });
   }
 
   function bindInput(id, handler) {
@@ -921,8 +978,103 @@ const App = (() => {
     return div.innerHTML;
   }
 
+  function buildStepperInput(id, value, step, min, max) {
+    return `
+      <div class="stepper-input">
+        <button type="button" class="stepper-btn stepper-btn--minus" data-target-id="${id}" data-step="${step || 1}" data-min="${min !== undefined ? min : ''}">&minus;</button>
+        <input type="number" id="${id}" value="${value}" step="${step || 1}" min="${min !== undefined ? min : ''}" max="${max !== undefined ? max : ''}">
+        <button type="button" class="stepper-btn stepper-btn--plus" data-target-id="${id}" data-step="${step || 1}" data-max="${max !== undefined ? max : ''}">&plus;</button>
+      </div>
+    `;
+  }
+
   // Auto-init
   document.addEventListener('DOMContentLoaded', init);
 
-  return { setStatus, set2DMode, is2D };
+  async function showCustomPrompt(title, defaultValue = '') {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('custom-prompt-modal');
+      const modalTitle = document.getElementById('custom-prompt-title');
+      const input = document.getElementById('custom-prompt-input');
+      const btnConfirm = document.getElementById('custom-prompt-confirm');
+      const btnCancel = document.getElementById('custom-prompt-cancel');
+      const btnClose = document.getElementById('custom-prompt-close');
+
+      modalTitle.textContent = title;
+      input.value = defaultValue;
+      modal.classList.remove('hidden');
+      input.focus();
+
+      const handleConfirm = () => {
+        modal.classList.add('hidden');
+        cleanUp();
+        resolve(input.value);
+      };
+
+      const handleCancel = () => {
+        modal.classList.add('hidden');
+        cleanUp();
+        resolve(null);
+      };
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+          handleConfirm();
+        } else if (e.key === 'Escape') {
+          handleCancel();
+        }
+      };
+
+      btnConfirm.addEventListener('click', handleConfirm);
+      btnCancel.addEventListener('click', handleCancel);
+      btnClose.addEventListener('click', handleCancel);
+      input.addEventListener('keydown', handleKeyDown);
+
+      function cleanUp() {
+        btnConfirm.removeEventListener('click', handleConfirm);
+        btnCancel.removeEventListener('click', handleCancel);
+        btnClose.removeEventListener('click', handleCancel);
+        input.removeEventListener('keydown', handleKeyDown);
+      }
+    });
+  }
+
+  async function showCustomConfirm(title, message) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('custom-confirm-modal');
+      const modalTitle = document.getElementById('custom-confirm-title');
+      const modalText = document.getElementById('custom-confirm-text');
+      const btnConfirm = document.getElementById('custom-confirm-confirm');
+      const btnCancel = document.getElementById('custom-confirm-cancel');
+      const btnClose = document.getElementById('custom-confirm-close');
+
+      modalTitle.textContent = title;
+      modalText.textContent = message;
+      modal.classList.remove('hidden');
+
+      const handleConfirm = () => {
+        modal.classList.add('hidden');
+        cleanUp();
+        resolve(true);
+      };
+
+      const handleCancel = () => {
+        modal.classList.add('hidden');
+        cleanUp();
+        resolve(false);
+      };
+
+      btnConfirm.addEventListener('click', handleConfirm);
+      btnCancel.addEventListener('click', handleCancel);
+      btnClose.addEventListener('click', handleCancel);
+
+      function cleanUp() {
+        btnConfirm.removeEventListener('click', handleConfirm);
+        btnCancel.removeEventListener('click', handleCancel);
+        btnClose.removeEventListener('click', handleCancel);
+      }
+    });
+  }
+
+  return { setStatus, set2DMode, is2D, showCustomPrompt, showCustomConfirm };
 })();

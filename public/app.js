@@ -123,6 +123,21 @@ window.App = (() => {
     // Init local storage
     await LocalStorage.open();
 
+    // Material editor
+    MaterialEditor.init();
+
+    // PDF export
+    document.getElementById('btn-export-pdf').addEventListener('click', () => {
+      if (!currentPlan) {
+        setStatus('Nenhum plano para exportar');
+        setTimeout(() => setStatus(''), 2000);
+        return;
+      }
+      PDFExport.exportPDF(currentPlan);
+      setStatus('Gerando PDF...');
+      setTimeout(() => setStatus(''), 3000);
+    });
+
     // Walkthrough
     Walkthrough.init();
     document.getElementById('btn-walkthrough').addEventListener('click', () => {
@@ -868,8 +883,22 @@ window.App = (() => {
         html = `<div class="prop-group"><label>${hit.type}</label><p>ID: ${el.id}</p></div>`;
     }
 
+    // Add material editor button for wall/room/furniture
+    if (['wall', 'room', 'furniture'].includes(hit.type)) {
+      html += `<div class="prop-group"><button id="btn-open-material-editor" class="small-btn" style="width:100%;padding:8px;margin-top:4px;background:var(--accent-soft);color:var(--accent);border:1px solid var(--border-accent)">Editar Material</button></div>`;
+    }
+
     content.innerHTML = html;
     wirePropertyInputs(hit);
+
+    // Wire material editor button
+    const matBtn = document.getElementById('btn-open-material-editor');
+    if (matBtn) {
+      matBtn.addEventListener('click', () => {
+        window._currentPlan = currentPlan;
+        MaterialEditor.open({ type: hit.type, element: hit.element });
+      });
+    }
   }
 
   function buildWallProperties(wall) {

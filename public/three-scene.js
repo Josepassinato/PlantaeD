@@ -67,6 +67,11 @@ const ThreeScene = (() => {
     renderer.shadowMap.type = _isMobile ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
     renderer.setClearColor(0x0f0f1a);
 
+    // PBR tone mapping for more realistic look
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+
     // Scene
     scene = new THREE.Scene();
 

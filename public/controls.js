@@ -56,6 +56,12 @@ const Controls = (() => {
     const btn = document.getElementById('btn-grid');
     btn.classList.toggle('active', gridVisible);
     ThreeScene.toggleGrid(gridVisible);
+    // Also toggle 2D editor grid
+    if (typeof Editor2D !== 'undefined' && Editor2D.toggleGrid) {
+      Editor2D.toggleGrid(gridVisible);
+    }
+    App.setStatus(gridVisible ? 'Grade ativada' : 'Grade desativada');
+    setTimeout(() => App.setStatus(''), 1500);
   }
 
   function toggleFullscreen() {

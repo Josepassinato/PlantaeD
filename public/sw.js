@@ -1,4 +1,4 @@
-const CACHE_NAME = 'planta3d-v5';
+const CACHE_NAME = 'planta3d-v6';
 const PRECACHE = [
   '/',
   '/style.css',
@@ -20,6 +20,7 @@ const PRECACHE = [
   '/editor-2d.js',
   '/app.js',
   '/ux-enhancements.js',
+  '/touch-gestures.js',
   '/OrbitControls.js',
   'https://unpkg.com/three@0.152.2/build/three.min.js'
 ];
@@ -40,7 +41,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Network-first strategy
+// Network-first strategy with offline fallback
 self.addEventListener('fetch', (event) => {
   // Skip non-GET and API requests
   if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
@@ -50,10 +51,23 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        // Cache successful responses
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        }
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => {
+        // Offline fallback
+        return caches.match(event.request).then(cached => {
+          if (cached) return cached;
+          // If navigating, return the cached index page
+          if (event.request.mode === 'navigate') {
+            return caches.match('/');
+          }
+          return new Response('Offline', { status: 503, statusText: 'Offline' });
+        });
+      })
   );
 });

@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tutorial — Planta 3D</title>
+  <meta name="description" content="Aprenda a usar o Planta 3D para criar plantas de ambientes">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%230C0E13'/><text x='50' y='68' font-family='monospace' font-size='52' font-weight='bold' fill='%2300E5CC' text-anchor='middle'>P3</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0C0E13;
+      --bg-surface: #12151C;
+      --bg-card: #1A1E27;
+      --bg-elevated: #222730;
+      --border: rgba(0, 229, 204, 0.08);
+      --border-strong: rgba(0, 229, 204, 0.18);
+      --accent: #00E5CC;
+      --accent-dim: rgba(0, 229, 204, 0.12);
+      --accent-hover: #00FFE0;
+      --text: #D1D5DB;
+      --text-secondary: #8B95A5;
+      --text-muted: #4B5563;
+      --white: #F9FAFB;
+      --orange: #F59E0B;
+      --blue: #60A5FA;
+      --green: #34D399;
+      --red: #F85149;
+      --radius: 6px;
+      --radius-lg: 10px;
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    /* ── NAV ── */
+    .top-bar {
+      position: sticky;
+      top: 0;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+
+    .top-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .top-bar .logo {
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      padding: 3px 8px;
+      border: 1.5px solid var(--accent);
+      border-radius: var(--radius);
+      text-decoration: none;
+    }
+
+    .top-bar h1 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--white);
+    }
+
+    .top-bar-right a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      transition: all 0.15s var(--ease);
+    }
+
+    .top-bar-right a:hover {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+
+    /* ── TOC ── */
+    .toc {
+      position: fixed;
+      left: 0;
+      top: 56px;
+      bottom: 0;
+      width: 240px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      overflow-y: auto;
+      z-index: 50;
+    }
+
+    .toc-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      padding: 0 20px 12px;
+    }
+
+    .toc a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 20px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+
+    .toc a:hover {
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .toc a.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .toc-num {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      min-width: 20px;
+    }
+
+    .toc a.active .toc-num {
+      color: var(--accent);
+    }
+
+    /* ── MAIN ── */
+    .main {
+      margin-left: 240px;
+      max-width: 780px;
+      padding: 40px 48px 80px;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 48px 0 56px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 48px;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid var(--border-strong);
+      border-radius: 20px;
+      padding: 4px 14px;
+      margin-bottom: 20px;
+    }
+
+    .hero h2 {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--white);
+      margin-bottom: 12px;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      font-size: 16px;
+      color: var(--text-secondary);
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    /* ── SECTIONS ── */
+    .section {
+      margin-bottom: 56px;
+      scroll-margin-top: 72px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-num {
+      font-family: 'Space Mono', monospace;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 40px;
+    }
+
+    .section-header h3 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .section p {
+      margin-bottom: 14px;
+      color: var(--text);
+    }
+
+    /* ── STEPS ── */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .step {
+      display: flex;
+      gap: 16px;
+      padding: 18px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      transition: border-color 0.2s;
+    }
+
+    .step:hover {
+      border-color: var(--border-strong);
+    }
+
+    .step-number {
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-dim);
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-content h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 4px;
+    }
+
+    .step-content p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 0;
+    }
+
+    /* ── TOOL CARDS ── */
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .tool-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      transition: all 0.2s var(--ease);
+    }
+
+    .tool-card:hover {
+      border-color: var(--border-strong);
+      transform: translateY(-2px);
+    }
+
+    .tool-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .tool-card-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--accent-dim);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .tool-card-header strong {
+      font-size: 13px;
+      color: var(--white);
+    }
+
+    .tool-card p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 0;
+      line-height: 1.5;
+    }
+
+    kbd {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      padding: 1px 6px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    /* ── TIP BOXES ── */
+    .tip {
+      display: flex;
+      gap: 14px;
+      padding: 16px 18px;
+      background: rgba(0, 229, 204, 0.04);
+      border: 1px solid var(--border-strong);
+      border-left: 3px solid var(--accent);
+      border-radius: var(--radius);
+      margin: 20px 0;
+    }
+
+    .tip-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+      line-height: 1.5;
+    }
+
+    .tip-text {
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .tip-text strong {
+      color: var(--accent);
+    }
+
+    .warn {
+      background: rgba(245, 158, 11, 0.04);
+      border-color: rgba(245, 158, 11, 0.2);
+      border-left-color: var(--orange);
+    }
+
+    /* ── SHORTCUTS TABLE ── */
+    .shortcut-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+    }
+
+    .shortcut-table th {
+      text-align: left;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-strong);
+    }
+
+    .shortcut-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .shortcut-table td:first-child {
+      width: 120px;
+    }
+
+    .shortcut-table tr:hover td {
+      background: var(--accent-dim);
+    }
+
+    /* ── DIAGRAM ── */
+    .diagram {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .diagram svg {
+      max-width: 100%;
+    }
+
+    .diagram-caption {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 12px;
+      font-style: italic;
+    }
+
+    /* ── FOOTER ── */
+    .tutorial-footer {
+      border-top: 1px solid var(--border);
+      padding-top: 32px;
+      margin-top: 48px;
+      text-align: center;
+    }
+
+    .tutorial-footer p {
+      color: var(--text-muted);
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+
+    .tutorial-footer a {
+      display: inline-block;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      padding: 10px 24px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      transition: all 0.15s;
+    }
+
+    .tutorial-footer a:hover {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .toc { display: none; }
+      .main { margin-left: 0; padding: 24px 20px 60px; }
+      .hero h2 { font-size: 24px; }
+      .tool-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,229,204,0.2); border-radius: 3px; }
+    * { scrollbar-width: thin; scrollbar-color: rgba(0,229,204,0.2) transparent; }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <a href="/" class="logo">P3D</a>
+      <h1>Tutorial de Uso</h1>
+    </div>
+    <div class="top-bar-right">
+      <a href="/">Abrir Editor</a>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <nav class="toc" id="toc">
+    <div class="toc-title">Conteudo</div>
+    <a href="#inicio"><span class="toc-num">01</span> Primeiro Acesso</a>
+    <a href="#interface"><span class="toc-num">02</span> Conhecendo a Interface</a>
+    <a href="#primeiro-projeto"><span class="toc-num">03</span> Seu Primeiro Projeto</a>
+    <a href="#paredes"><span class="toc-num">04</span> Desenhando Paredes</a>
+    <a href="#portas-janelas"><span class="toc-num">05</span> Portas e Janelas</a>
+    <a href="#salas"><span class="toc-num">06</span> Criando Salas</a>
+    <a href="#moveis"><span class="toc-num">07</span> Colocando Moveis</a>
+    <a href="#medidas"><span class="toc-num">08</span> Medidas e Cotas</a>
+    <a href="#3d"><span class="toc-num">09</span> Visualizacao 3D</a>
+    <a href="#salvar-exportar"><span class="toc-num">10</span> Salvar e Exportar</a>
+    <a href="#atalhos"><span class="toc-num">11</span> Atalhos de Teclado</a>
+    <a href="#dicas"><span class="toc-num">12</span> Dicas Avancadas</a>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-badge">TUTORIAL COMPLETO</div>
+      <h2>Aprenda a usar o Planta 3D</h2>
+      <p>Guia passo a passo para criar plantas de ambientes em 2D e 3D para seus projetos de marcenaria</p>
+    </div>
+
+    <!-- 01 -->
+    <div class="section" id="inicio">
+      <div class="section-header">
+        <span class="section-num">01</span>
+        <h3>Primeiro Acesso</h3>
+      </div>
+      <p>Ao abrir o Planta 3D pela primeira vez, voce vera a <strong>tela de boas-vindas</strong> com tres opcoes:</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Novo Projeto</h4>
+            <p>Comece do zero com uma area em branco. Voce vai digitar o nome do projeto (ex: "Cozinha Planejada — Cliente Joao") e comecar a desenhar.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Abrir Projeto Existente</h4>
+            <p>Abre a lista lateral com todos os seus projetos salvos. Clique em qualquer um para continuar editando.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>Ver Exemplo</h4>
+            <p>Carrega o projeto de demonstracao (Apartamento 2Q — 65m2) para voce explorar as funcionalidades antes de criar o seu.</p>
+          </div>
+        </div>
+      </div>
+      <p>Tambem ha <strong>templates prontos</strong> na parte de baixo: Cozinha, Quarto, Sala e Banheiro. Ao clicar, um ambiente basico com paredes, porta e janela ja vem pronto para voce mobiliar.</p>
+      <div class="tip">
+        <div class="tip-icon">&#9889;</div>
+        <div class="tip-text"><strong>Dica:</strong> Se e sua primeira vez, clique em "Ver Exemplo" para entender como o editor funciona antes de criar seu projeto.</div>
+      </div>
+    </div>
+
+    <!-- 02 -->
+    <div class="section" id="interface">
+      <div class="section-header">
+        <span class="section-num">02</span>
+        <h3>Conhecendo a Interface</h3>
+      </div>
+      <p>A tela do editor tem 5 areas principais:</p>
+
+      <div class="diagram">
+        <svg viewBox="0 0 600 360" width="600" height="360" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Header -->
+          <rect x="1" y="1" width="598" height="40" rx="4" fill="#12151C" stroke="#00E5CC" stroke-width="1" stroke-opacity="0.3"/>
+          <text x="300" y="25" text-anchor="middle" font-family="Inter,sans-serif" font-size="12" font-weight="700" fill="#00E5CC">BARRA SUPERIOR — Nome do projeto, Salvar, Desfazer, 2D/3D</text>
+
+          <!-- Toolbar -->
+          <rect x="1" y="42" width="60" height="290" rx="4" fill="#12151C" stroke="#00E5CC" stroke-width="1" stroke-opacity="0.3"/>
+          <text x="31" y="140" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#00E5CC" transform="rotate(-90 31 140)">FERRAMENTAS</text>
+
+          <!-- Canvas -->
+          <rect x="62" y="42" width="370" height="290" rx="4" fill="#0C0E13" stroke="#00E5CC" stroke-width="1" stroke-opacity="0.15"/>
+          <text x="247" y="192" text-anchor="middle" font-family="Inter,sans-serif" font-size="16" font-weight="700" fill="#4B5563">AREA DE DESENHO</text>
+          <text x="247" y="212" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" fill="#4B5563">2D (planta baixa) ou 3D (perspectiva)</text>
+
+          <!-- Right panel -->
+          <rect x="433" y="42" width="166" height="290" rx="4" fill="#12151C" stroke="#00E5CC" stroke-width="1" stroke-opacity="0.3"/>
+          <text x="516" y="110" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="600" fill="#8B95A5">PROPRIEDADES</text>
+          <text x="516" y="125" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="#4B5563">Editar elemento</text>
+          <line x1="445" y1="145" x2="587" y2="145" stroke="#00E5CC" stroke-opacity="0.1"/>
+          <text x="516" y="175" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="600" fill="#8B95A5">ANOTACOES</text>
+          <text x="516" y="190" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="#4B5563">Notas e medidas</text>
+
+          <!-- Status bar -->
+          <rect x="1" y="333" width="598" height="26" rx="4" fill="#12151C" stroke="#00E5CC" stroke-width="1" stroke-opacity="0.3"/>
+          <text x="300" y="350" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" fill="#4B5563">BARRA DE STATUS — Dicas da ferramenta ativa</text>
+        </svg>
+        <div class="diagram-caption">Layout do editor Planta 3D</div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">A</div>
+          <div class="step-content">
+            <h4>Barra Superior</h4>
+            <p>Nome do projeto, botoes Desfazer/Refazer, alternancia 2D/3D, Salvar, Exportar PNG, Importar DXF, e o indicador de zoom.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">B</div>
+          <div class="step-content">
+            <h4>Barra de Ferramentas (esquerda)</h4>
+            <p>Todas as ferramentas de desenho organizadas em 4 grupos: <strong>Desenhar</strong> (paredes, portas, janelas, salas), <strong>Moveis</strong>, <strong>Anotar</strong> (notas, medidas, cotas) e <strong>Ver</strong> (zoom, vistas).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">C</div>
+          <div class="step-content">
+            <h4>Area de Desenho (centro)</h4>
+            <p>Onde voce desenha e visualiza o projeto. Pode ser em planta baixa (2D) ou em perspectiva (3D).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">D</div>
+          <div class="step-content">
+            <h4>Paineis Laterais (direita)</h4>
+            <p>Mostra as <strong>propriedades</strong> do elemento selecionado (espessura, cor, tamanho) e a lista de <strong>anotacoes</strong> do projeto.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">E</div>
+          <div class="step-content">
+            <h4>Barra de Status (inferior)</h4>
+            <p>Mostra dicas sobre a ferramenta ativa. Ex: "Clique para iniciar parede. Clique novamente para finalizar."</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 03 -->
+    <div class="section" id="primeiro-projeto">
+      <div class="section-header">
+        <span class="section-num">03</span>
+        <h3>Seu Primeiro Projeto</h3>
+      </div>
+      <p>Vamos criar um projeto do zero em 5 minutos:</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Crie o projeto</h4>
+            <p>Na tela inicial, clique em <strong>"Novo Projeto"</strong>. Digite o nome (ex: "Cozinha Cliente Maria") e confirme.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Mude para 2D</h4>
+            <p>Clique no botao <strong>"3D"</strong> na barra superior para alternar para o modo <strong>2D</strong> (planta baixa). E mais facil desenhar nesse modo.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>Desenhe as paredes</h4>
+            <p>Selecione a ferramenta <strong>"Parede"</strong> (<kbd>W</kbd>) e clique nos pontos para criar as paredes do ambiente. Veja a secao 04 para detalhes.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h4>Adicione portas e janelas</h4>
+            <p>Selecione <strong>"Porta"</strong> (<kbd>D</kbd>) ou <strong>"Janela"</strong> (<kbd>J</kbd>) e clique em uma parede para posicionar.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">5</div>
+          <div class="step-content">
+            <h4>Coloque os moveis</h4>
+            <p>Selecione <strong>"Mobiliar"</strong> (<kbd>F</kbd>), escolha um movel no catalogo lateral e clique no plano para posicionar. Use <kbd>R</kbd> para rotacionar.</p>
+          </div>
+        </div>
+      </div>
+      <div class="tip">
+        <div class="tip-icon">&#128161;</div>
+        <div class="tip-text"><strong>Atalho rapido:</strong> Se voce so quer ver como fica, clique em um dos <strong>templates</strong> (Cozinha, Quarto, etc.) na tela inicial. Ja vem com paredes prontas!</div>
+      </div>
+    </div>
+
+    <!-- 04 -->
+    <div class="section" id="paredes">
+      <div class="section-header">
+        <span class="section-num">04</span>
+        <h3>Desenhando Paredes</h3>
+      </div>
+      <p>Paredes sao a base de todo projeto. Para desenha-las:</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Ative a ferramenta Parede</h4>
+            <p>Clique em <strong>"Parede"</strong> na barra lateral ou pressione <kbd>W</kbd>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Clique no ponto inicial</h4>
+            <p>Clique onde a parede deve comecar. Um ponto aparece na tela.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>Clique no ponto final</h4>
+            <p>Mova o mouse e clique no ponto final. A parede e criada entre os dois pontos. Voce pode continuar clicando para criar mais segmentos conectados.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h4>Finalize com ESC</h4>
+            <p>Pressione <kbd>ESC</kbd> para parar de desenhar paredes. Ou clique com o botao direito.</p>
+          </div>
+        </div>
+      </div>
+      <p>Ao selecionar uma parede (ferramenta <strong>Selecionar</strong>, <kbd>V</kbd>), o painel de propriedades mostra:</p>
+      <ul style="margin: 12px 0 12px 24px; color: var(--text-secondary);">
+        <li><strong>Espessura</strong> — padrao 0.15m (15cm)</li>
+        <li><strong>Altura</strong> — padrao 2.80m</li>
+        <li><strong>Cor</strong> — paleta de cores para personalizar</li>
+      </ul>
+      <div class="tip">
+        <div class="tip-icon">&#129522;</div>
+        <div class="tip-text"><strong>Snap magnetico:</strong> O botao "Snap" (ativo por padrao) alinha automaticamente as paredes em angulos retos e encaixa nos pontos existentes. Mantenha ativado para paredes alinhadas.</div>
+      </div>
+    </div>
+
+    <!-- 05 -->
+    <div class="section" id="portas-janelas">
+      <div class="section-header">
+        <span class="section-num">05</span>
+        <h3>Portas e Janelas</h3>
+      </div>
+      <p>Portas e janelas sao adicionadas <strong>em paredes existentes</strong>. Primeiro desenhe as paredes, depois adicione as aberturas.</p>
+
+      <h4 style="color: var(--white); margin: 20px 0 10px;">Portas</h4>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Selecione a ferramenta Porta (<kbd>D</kbd>)</h4>
+            <p>A barra de status mostra: "Clique em uma parede para adicionar porta".</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Clique em uma parede</h4>
+            <p>A porta e adicionada na posicao clicada. No painel de propriedades, voce pode ajustar: largura (padrao 0.90m), altura (padrao 2.10m) e tipo (simples, dupla, correr ou sanfonada).</p>
+          </div>
+        </div>
+      </div>
+
+      <h4 style="color: var(--white); margin: 20px 0 10px;">Janelas</h4>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Selecione a ferramenta Janela (<kbd>J</kbd>)</h4>
+            <p>Funciona igual a porta: clique em uma parede.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Ajuste nas propriedades</h4>
+            <p>Largura (padrao 1.20m), altura (padrao 1.00m) e peitoril — a altura do chao ate a base da janela (padrao 1.00m).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 06 -->
+    <div class="section" id="salas">
+      <div class="section-header">
+        <span class="section-num">06</span>
+        <h3>Criando Salas</h3>
+      </div>
+      <p>Salas definem o piso e o nome do comodo. Voce pode criar salas independentes das paredes.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Selecione a ferramenta Sala (<kbd>O</kbd>)</h4>
+            <p>O cursor muda para modo de desenho de sala.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Clique nos cantos</h4>
+            <p>Clique em cada canto da sala. Uma linha pontilhada acompanha o desenho.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>Feche a sala</h4>
+            <p>De um <strong>duplo-clique</strong> no ultimo ponto ou clique no primeiro ponto para fechar. A sala e preenchida com o material de piso.</p>
+          </div>
+        </div>
+      </div>
+      <p>Ao selecionar a sala, voce pode editar o <strong>nome</strong> (ex: "Cozinha") e escolher o <strong>material do piso</strong> (madeira, porcelanato, cimento, etc.).</p>
+    </div>
+
+    <!-- 07 -->
+    <div class="section" id="moveis">
+      <div class="section-header">
+        <span class="section-num">07</span>
+        <h3>Colocando Moveis</h3>
+      </div>
+      <p>O catalogo de moveis tem dezenas de itens organizados por categoria.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Abra o catalogo (<kbd>F</kbd>)</h4>
+            <p>O painel de moveis aparece a direita com categorias: Cozinha, Quarto, Banheiro, Sala, Escritorio, etc.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Busque ou navegue</h4>
+            <p>Use a barra de busca (ex: "mesa", "armario") ou clique nas categorias para filtrar.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>Clique no movel desejado</h4>
+            <p>O movel "gruda" no cursor. Mova o mouse para posicionar.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h4>Posicione e rotacione</h4>
+            <p>Clique para colocar. Antes de clicar, pressione <kbd>R</kbd> para rotacionar o movel em 15 graus. Pressione <kbd>ESC</kbd> para cancelar.</p>
+          </div>
+        </div>
+      </div>
+      <div class="tip">
+        <div class="tip-icon">&#128295;</div>
+        <div class="tip-text"><strong>Apos posicionar:</strong> Selecione o movel com a ferramenta <strong>Selecionar</strong> (<kbd>V</kbd>) para ajustar a posicao exata (X, Y) e a rotacao no painel de propriedades.</div>
+      </div>
+    </div>
+
+    <!-- 08 -->
+    <div class="section" id="medidas">
+      <div class="section-header">
+        <span class="section-num">08</span>
+        <h3>Medidas e Cotas</h3>
+      </div>
+      <p>Tres ferramentas para documentar dimensoes no projeto:</p>
+
+      <div class="tool-grid">
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon">
+              <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="7" width="16" height="6" rx="1"/><line x1="5" y1="7" x2="5" y2="10"/><line x1="8" y1="7" x2="8" y2="9"/><line x1="11" y1="7" x2="11" y2="10"/><line x1="14" y1="7" x2="14" y2="9"/></svg>
+            </div>
+            <strong>Medir (<kbd>M</kbd>)</strong>
+          </div>
+          <p>Mede a distancia entre dois pontos. Clique no ponto A, depois no ponto B. A medida aparece na lista de anotacoes.</p>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon">
+              <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="4" y1="10" x2="16" y2="10"/><path d="M4 10l3-2.5v5z" fill="currentColor" stroke="none"/><path d="M16 10l-3-2.5v5z" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <strong>Cota (<kbd>C</kbd>)</strong>
+          </div>
+          <p>Cria uma cota fixa (linha com setas e valor) entre dois pontos. Aparece diretamente no desenho com o valor em metros.</p>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon">
+              <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="12" height="14" rx="1.5"/><line x1="7" y1="7" x2="13" y2="7"/><line x1="7" y1="10" x2="13" y2="10"/></svg>
+            </div>
+            <strong>Nota (<kbd>N</kbd>)</strong>
+          </div>
+          <p>Adiciona uma observacao em qualquer ponto. Util para indicar "ponto eletrico", "lixeira", "tomada", etc.</p>
+        </div>
+      </div>
+
+      <div class="tip warn">
+        <div class="tip-icon">&#9888;&#65039;</div>
+        <div class="tip-text"><strong>Importante:</strong> Todas as medidas sao em <strong>metros</strong>. Uma parede de 3m x 4m aparece como "3.00" e "4.00" nas cotas.</div>
+      </div>
+    </div>
+
+    <!-- 09 -->
+    <div class="section" id="3d">
+      <div class="section-header">
+        <span class="section-num">09</span>
+        <h3>Visualizacao 3D</h3>
+      </div>
+      <p>O modo 3D permite ver o projeto em perspectiva — ideal para apresentar ao cliente.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Ative o modo 3D</h4>
+            <p>Clique no botao <strong>"2D"</strong> na barra superior (ele alterna para "3D"). Ou use as vistas predefinidas na barra de ferramentas.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Navegue pela cena</h4>
+            <p><strong>Botao esquerdo + arrastar</strong> = rotacionar a camera. <strong>Scroll</strong> = zoom. <strong>Botao direito + arrastar</strong> = mover a vista.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>Use as vistas rapidas</h4>
+            <p>Na barra de ferramentas, secao "Ver": <strong>Cima</strong> (vista de cima), <strong>Frente</strong> (vista frontal), <strong>3D</strong> (perspectiva diagonal).</p>
+          </div>
+        </div>
+      </div>
+      <div class="tip">
+        <div class="tip-icon">&#127912;</div>
+        <div class="tip-text"><strong>Para apresentar ao cliente:</strong> Use o modo 3D + vista "3D" para uma perspectiva bonita, depois exporte como PNG (botao na barra superior).</div>
+      </div>
+    </div>
+
+    <!-- 10 -->
+    <div class="section" id="salvar-exportar">
+      <div class="section-header">
+        <span class="section-num">10</span>
+        <h3>Salvar e Exportar</h3>
+      </div>
+      <p>O projeto salva <strong>automaticamente</strong> a cada alteracao. Mas voce tambem pode:</p>
+
+      <div class="tool-grid">
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon">
+              <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 17H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v7a2 2 0 0 1-2 2z"/></svg>
+            </div>
+            <strong>Salvar</strong>
+          </div>
+          <p>Forca o salvamento imediato. O botao fica verde quando salvo com sucesso.</p>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon">
+              <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="14" height="14" rx="2"/><circle cx="7.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <strong>Exportar PNG</strong>
+          </div>
+          <p>Gera uma imagem do projeto (2D ou 3D, dependendo do modo ativo). A imagem e baixada no seu computador.</p>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon">
+              <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/></svg>
+            </div>
+            <strong>Importar DXF</strong>
+          </div>
+          <p>Importa arquivos DXF (AutoCAD). As linhas do DXF viram paredes no projeto. Util para importar plantas de arquitetos.</p>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon">
+              <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10v3h10v-3"/><path d="M8 2v8"/></svg>
+            </div>
+            <strong>Exportar Anotacoes</strong>
+          </div>
+          <p>Exporta todas as notas e medidas como arquivo JSON. Botao no painel de anotacoes (direita).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 11 -->
+    <div class="section" id="atalhos">
+      <div class="section-header">
+        <span class="section-num">11</span>
+        <h3>Atalhos de Teclado</h3>
+      </div>
+      <p>Atalhos aceleram muito o trabalho. Os mais usados:</p>
+
+      <table class="shortcut-table">
+        <thead>
+          <tr><th>Tecla</th><th>Acao</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><kbd>V</kbd></td><td>Selecionar / mover elementos</td></tr>
+          <tr><td><kbd>W</kbd></td><td>Desenhar paredes</td></tr>
+          <tr><td><kbd>D</kbd></td><td>Adicionar porta</td></tr>
+          <tr><td><kbd>J</kbd></td><td>Adicionar janela</td></tr>
+          <tr><td><kbd>F</kbd></td><td>Abrir catalogo de moveis</td></tr>
+          <tr><td><kbd>O</kbd></td><td>Criar sala</td></tr>
+          <tr><td><kbd>P</kbd></td><td>Posicionar pilar</td></tr>
+          <tr><td><kbd>T</kbd></td><td>Adicionar escada</td></tr>
+          <tr><td><kbd>E</kbd></td><td>Apagar elemento</td></tr>
+          <tr><td><kbd>N</kbd></td><td>Adicionar nota</td></tr>
+          <tr><td><kbd>M</kbd></td><td>Medir distancia</td></tr>
+          <tr><td><kbd>C</kbd></td><td>Criar cota</td></tr>
+          <tr><td><kbd>R</kbd></td><td>Rotacionar movel/escada</td></tr>
+          <tr><td><kbd>S</kbd></td><td>Ligar/desligar snap magnetico</td></tr>
+          <tr><td><kbd>ESC</kbd></td><td>Cancelar acao atual</td></tr>
+          <tr><td><kbd>Ctrl+Z</kbd></td><td>Desfazer</td></tr>
+          <tr><td><kbd>Ctrl+Shift+Z</kbd></td><td>Refazer</td></tr>
+        </tbody>
+      </table>
+
+      <div class="tip">
+        <div class="tip-icon">&#9000;&#65039;</div>
+        <div class="tip-text">Voce pode acessar essa lista a qualquer momento clicando no botao <strong>"?"</strong> na barra superior do editor.</div>
+      </div>
+    </div>
+
+    <!-- 12 -->
+    <div class="section" id="dicas">
+      <div class="section-header">
+        <span class="section-num">12</span>
+        <h3>Dicas Avancadas</h3>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">&#9733;</div>
+          <div class="step-content">
+            <h4>Comece pelo 2D, finalize no 3D</h4>
+            <p>Desenhe todas as paredes, portas e janelas no modo 2D (mais preciso). Depois mude para 3D para colocar moveis e ver o resultado final.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">&#9733;</div>
+          <div class="step-content">
+            <h4>Use cotas para documentar</h4>
+            <p>Adicione cotas (<kbd>C</kbd>) nas medidas principais antes de exportar a imagem. O cliente precisa ver as dimensoes no desenho.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">&#9733;</div>
+          <div class="step-content">
+            <h4>Snap e seu melhor amigo</h4>
+            <p>Mantenha o snap ativado. Ele garante que paredes se conectem corretamente e que angulos fiquem retos. Desative temporariamente so quando precisar de um angulo diferente.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">&#9733;</div>
+          <div class="step-content">
+            <h4>Desfazer sem medo</h4>
+            <p>Errou? <kbd>Ctrl+Z</kbd> desfaz a ultima acao. Voce pode desfazer varias vezes seguidas. Use <kbd>Ctrl+Shift+Z</kbd> para refazer.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">&#9733;</div>
+          <div class="step-content">
+            <h4>Exporte duas imagens</h4>
+            <p>Para apresentar ao cliente, exporte a planta em <strong>2D</strong> (com cotas e medidas) e tambem em <strong>3D</strong> (perspectiva bonita). Basta alternar o modo e clicar "PNG" duas vezes.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">&#9733;</div>
+          <div class="step-content">
+            <h4>Importar planta do arquiteto</h4>
+            <p>Se o arquiteto enviou um arquivo <strong>.DXF</strong> (AutoCAD), use "DXF" na barra superior para importar. As linhas viram paredes automaticamente.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="tutorial-footer">
+      <p>Pronto para comecar?</p>
+      <a href="/">Abrir o Editor Planta 3D</a>
+    </div>
+
+  </div>
+
+  <script>
+    // Highlight active TOC item on scroll
+    const sections = document.querySelectorAll('.section');
+    const tocLinks = document.querySelectorAll('.toc a');
+
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          tocLinks.forEach(l => l.classList.remove('active'));
+          const active = document.querySelector(`.toc a[href="#${entry.target.id}"]`);
+          if (active) active.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+  </script>
+</body>
+</html>

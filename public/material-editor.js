@@ -126,13 +126,11 @@ const MaterialEditor = (() => {
     // Color
     const colorInput = document.getElementById('me-color');
     const hexInput = document.getElementById('me-color-hex');
-    if (colorInput) {
+    if (colorInput && hexInput) {
       colorInput.addEventListener('input', (e) => {
         applyColor(e.target.value);
         hexInput.value = e.target.value;
       });
-    }
-    if (hexInput) {
       hexInput.addEventListener('change', (e) => {
         let v = e.target.value;
         if (!v.startsWith('#')) v = '#' + v;

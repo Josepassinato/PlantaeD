@@ -2075,6 +2075,19 @@ button {
   border: 2px solid var(--bg-card);
   box-shadow: var(--shadow-sm);
 }
+.me-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--bg-card);
+}
+.me-slider::-moz-range-track {
+  background: var(--bg-elevated);
+  border-radius: 3px;
+  height: 6px;
+}
 .me-slider-labels {
   display: flex;
   justify-content: space-between;

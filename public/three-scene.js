@@ -1,12 +1,15 @@
 /**
  * three-scene.js — Renderer, cameras, lights, grid, animation loop
+ * Enhanced with better lighting, environment, and performance modes
  */
 const ThreeScene = (() => {
   let renderer, perspCamera, orthoCamera, activeCamera;
-  let scene, gridHelper, ambientLight, dirLight, hemiLight;
+  let scene, gridHelper, ambientLight, dirLight, hemiLight, fillLight;
   let orbitControls;
   let animationId;
   let canvasEl;
+  let performanceMode = false;
+  let envMap = null;
 
   // Materials (reusable)
   const materials = {
@@ -81,24 +84,37 @@ const ThreeScene = (() => {
 
     activeCamera = perspCamera;
 
-    // Lights
-    ambientLight = new THREE.AmbientLight(0xffffff, _isMobile ? 0.7 : 0.6);
+    // Lights — Enhanced for better visual quality
+    ambientLight = new THREE.AmbientLight(0xffffff, _isMobile ? 0.5 : 0.4);
     scene.add(ambientLight);
 
-    dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(15, 20, 10);
+    // Main directional light (sun)
+    dirLight = new THREE.DirectionalLight(0xfff5e6, 1.0);
+    dirLight.position.set(15, 25, 10);
     dirLight.castShadow = true;
-    // Reduce shadow map resolution on mobile
     const shadowSize = _isMobile ? 1024 : 2048;
     dirLight.shadow.mapSize.set(shadowSize, shadowSize);
-    dirLight.shadow.camera.left = -20;
-    dirLight.shadow.camera.right = 20;
-    dirLight.shadow.camera.top = 20;
-    dirLight.shadow.camera.bottom = -20;
+    dirLight.shadow.camera.left = -25;
+    dirLight.shadow.camera.right = 25;
+    dirLight.shadow.camera.top = 25;
+    dirLight.shadow.camera.bottom = -25;
+    dirLight.shadow.camera.near = 0.5;
+    dirLight.shadow.camera.far = 80;
+    dirLight.shadow.bias = -0.0005;
+    dirLight.shadow.normalBias = 0.02;
     scene.add(dirLight);
 
-    hemiLight = new THREE.HemisphereLight(0xb1e1ff, 0xb97a20, 0.3);
+    // Fill light (softer, from opposite side)
+    fillLight = new THREE.DirectionalLight(0xc8d8f0, 0.3);
+    fillLight.position.set(-10, 15, -8);
+    scene.add(fillLight);
+
+    // Hemisphere light (sky/ground ambient)
+    hemiLight = new THREE.HemisphereLight(0xb1e1ff, 0xb97a20, 0.35);
     scene.add(hemiLight);
+
+    // Generate a simple environment map for reflections
+    generateEnvMap();
 
     // Grid
     gridHelper = new THREE.GridHelper(40, 40, 0x2a3a5e, 0x1a2a4e);
@@ -221,6 +237,47 @@ const ThreeScene = (() => {
     gridHelper.visible = show;
   }
 
+  /** Generate a procedural gradient environment map for subtle reflections */
+  function generateEnvMap() {
+    if (_isMobile) return; // Skip on mobile for performance
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    // Gradient sky
+    const grad = ctx.createLinearGradient(0, 0, 0, size);
+    grad.addColorStop(0, '#87CEEB');
+    grad.addColorStop(0.5, '#E0E8F0');
+    grad.addColorStop(1, '#F5F0E8');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    envMap = tex;
+    scene.environment = envMap;
+  }
+
+  /** Toggle performance mode (reduced quality for slower devices) */
+  function setPerformanceMode(enabled) {
+    performanceMode = enabled;
+    if (enabled) {
+      renderer.shadowMap.enabled = false;
+      renderer.setPixelRatio(1);
+      if (fillLight) fillLight.visible = false;
+      scene.environment = null;
+    } else {
+      renderer.shadowMap.enabled = true;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, _isMobile ? 1.5 : 2));
+      if (fillLight) fillLight.visible = true;
+      scene.environment = envMap;
+    }
+  }
+
+  function isPerformanceMode() { return performanceMode; }
+
   function getRenderer() { return renderer; }
   function getScene() { return scene; }
   function getCamera() { return activeCamera; }
@@ -235,6 +292,7 @@ const ThreeScene = (() => {
   return {
     init, setCamera, clearGroups, animateCameraTo, toggleGrid, onResize,
     getRenderer, getScene, getCamera, getPerspCamera, getOrthoCamera,
-    getControls, getMaterials, getGroups, isMobile
+    getControls, getMaterials, getGroups, isMobile,
+    setPerformanceMode, isPerformanceMode
   };
 })();

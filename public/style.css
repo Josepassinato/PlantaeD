@@ -1860,6 +1860,239 @@ button {
   to { transform: translateX(0); }
 }
 
+/* ─── FLOOR SELECTOR ─── */
+.floor-selector {
+  position: absolute;
+  top: 60px;
+  left: 72px;
+  z-index: 50;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 160px;
+  overflow: hidden;
+}
+
+.floor-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.floor-selector-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.floor-selector-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.floor-selector-btn:hover {
+  background: var(--bg-hover);
+}
+
+.floor-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.floor-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text);
+  transition: background 0.15s;
+}
+.floor-list li:hover {
+  background: var(--bg-hover);
+}
+.floor-list li.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+  border: 1px solid var(--border-accent);
+}
+
+.floor-list li .floor-delete {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.floor-list li:hover .floor-delete {
+  opacity: 1;
+}
+.floor-list li .floor-delete:hover {
+  color: var(--red);
+  background: rgba(248, 81, 73, 0.1);
+}
+
+.floor-selector-options {
+  padding: 6px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.floor-option-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.floor-option-label input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 13px;
+  height: 13px;
+}
+
+@media (max-width: 768px) {
+  .floor-selector {
+    left: 8px;
+    top: auto;
+    bottom: 70px;
+    width: 140px;
+  }
+}
+
+/* ─── WALKTHROUGH MODE ─── */
+.walkthrough-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+.walkthrough-overlay.hidden { display: none; }
+
+.walkthrough-hud {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.walkthrough-crosshair {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 300;
+  text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  user-select: none;
+}
+
+.walkthrough-controls-hint {
+  position: absolute;
+  bottom: 24px;
+  display: flex;
+  gap: 16px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.walkthrough-instructions {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+}
+.walkthrough-instructions.hidden { display: none; }
+
+.walkthrough-instructions-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  padding: 32px 40px;
+  text-align: center;
+  max-width: 420px;
+  box-shadow: var(--shadow-xl);
+}
+.walkthrough-instructions-card h3 {
+  color: var(--accent);
+  font-size: 20px;
+  margin: 0 0 8px;
+}
+.walkthrough-instructions-card p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0 0 20px;
+}
+.walkthrough-key-hints {
+  text-align: left;
+  font-size: 13px;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.walkthrough-key-hints kbd {
+  display: inline-block;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-family: 'Space Mono', monospace;
+  color: var(--accent);
+  min-width: 22px;
+  text-align: center;
+}
+.walkthrough-start-btn {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  padding: 10px 28px;
+  border-radius: var(--radius-full);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.walkthrough-start-btn:hover {
+  background: var(--accent-hover);
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

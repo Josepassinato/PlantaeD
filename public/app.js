@@ -92,6 +92,69 @@ window.App = (() => {
     });
     document.getElementById('dxf-file-input').addEventListener('change', importDXF);
 
+    // JSON export/import
+    document.getElementById('btn-export-json').addEventListener('click', () => {
+      if (!currentPlan) {
+        App.setStatus('Nenhum plano para exportar');
+        setTimeout(() => App.setStatus(''), 2000);
+        return;
+      }
+      LocalStorage.exportPlanAsJSON(currentPlan);
+      App.setStatus('Projeto exportado como JSON!');
+      setTimeout(() => App.setStatus(''), 2000);
+    });
+    document.getElementById('btn-import-json').addEventListener('click', async () => {
+      const plan = await LocalStorage.importPlanFromJSON();
+      if (!plan) return;
+      DataModel.migratePlan(plan);
+      currentPlan = plan;
+      await LocalStorage.savePlan(plan);
+      try { await savePlanToServer(plan); } catch (e) { /* offline ok */ }
+      document.getElementById('plan-name').textContent = plan.name;
+      document.getElementById('empty-overlay').classList.add('hidden');
+      UndoManager.clear();
+      refreshViews();
+      await loadPlanList();
+      renderPlanList();
+      App.setStatus('Projeto importado com sucesso!');
+      setTimeout(() => App.setStatus(''), 2000);
+    });
+
+    // Init local storage
+    await LocalStorage.open();
+
+    // Walkthrough
+    Walkthrough.init();
+    document.getElementById('btn-walkthrough').addEventListener('click', () => {
+      if (!currentPlan) {
+        setStatus('Carregue um plano primeiro');
+        setTimeout(() => setStatus(''), 2000);
+        return;
+      }
+      if (is2DMode) {
+        setStatus('Mude para vista 3D primeiro');
+        setTimeout(() => setStatus(''), 2000);
+        return;
+      }
+      // Expose currentPlan for walkthrough to find center
+      window._currentPlan = currentPlan;
+      Walkthrough.toggle();
+    });
+
+    // Floor management
+    document.getElementById('btn-add-floor').addEventListener('click', () => {
+      if (!currentPlan) return;
+      UndoManager.snapshot();
+      FloorManager.addFloor(currentPlan);
+      refreshViews();
+      renderFloorList();
+      EventBus.emit('plan:changed', currentPlan);
+    });
+    document.getElementById('floor-show-all').addEventListener('change', (e) => {
+      FloorManager.setShowAllFloors(e.target.checked);
+      refreshViews();
+    });
+
     // Wire EventBus listeners
     wireEvents();
 
@@ -191,15 +254,34 @@ window.App = (() => {
   }
 
   async function loadPlanList() {
+    let serverPlans = [];
+    let localPlans = [];
+
+    // Load from server
     try {
       const res = await fetch('/api/planta3d/plans');
-      plans = await res.json();
-      renderPlanList();
+      serverPlans = await res.json();
     } catch (err) {
-      console.error('Failed to load plans:', err);
-      plans = [];
-      renderPlanList();
+      console.error('Server unreachable, using local storage:', err);
     }
+
+    // Load from local storage
+    try {
+      localPlans = await LocalStorage.listPlans();
+    } catch (err) {
+      console.error('Local storage error:', err);
+    }
+
+    // Merge: server plans + local-only plans
+    const mergedMap = new Map();
+    serverPlans.forEach(p => mergedMap.set(p.id, { ...p, source: 'server' }));
+    localPlans.forEach(p => {
+      if (!mergedMap.has(p.id)) {
+        mergedMap.set(p.id, { ...p, source: 'local' });
+      }
+    });
+    plans = Array.from(mergedMap.values());
+    renderPlanList();
   }
 
   function renderPlanList() {
@@ -215,7 +297,7 @@ window.App = (() => {
     empty.style.display = 'none';
     list.innerHTML = plans.map(p => `
       <li data-id="${p.id}" class="${currentPlan && currentPlan.id === p.id ? 'active' : ''}">
-        <span class="plan-item-name">${escHtml(p.name)}</span>
+        <span class="plan-item-name">${escHtml(p.name)}${p.source === 'local' ? ' <small style="color:var(--accent);font-size:10px">(local)</small>' : ''}</span>
         <button class="plan-item-delete" data-id="${p.id}" title="Excluir plano">&times;</button>
       </li>
     `).join('');
@@ -243,12 +325,32 @@ window.App = (() => {
   async function loadPlan(id) {
     showLoading(true);
     try {
-      const res = await fetch(`/api/planta3d/plans/${id}`);
-      if (!res.ok) throw new Error('Plan not found');
-      currentPlan = await res.json();
+      let plan = null;
+
+      // Try server first
+      try {
+        const res = await fetch(`/api/planta3d/plans/${id}`);
+        if (res.ok) plan = await res.json();
+      } catch (e) {
+        console.warn('Server load failed, trying local:', e);
+      }
+
+      // Fallback to local storage
+      if (!plan) {
+        plan = await LocalStorage.loadPlan(id);
+      }
+
+      if (!plan) throw new Error('Plan not found');
+      currentPlan = plan;
 
       // Migrate to v2
       DataModel.migratePlan(currentPlan);
+
+      // Migrate to multi-floor format
+      FloorManager.migratePlanToFloors(currentPlan);
+
+      // Ensure local copy is up to date
+      await LocalStorage.savePlan(currentPlan);
 
       document.getElementById('plan-name').textContent = currentPlan.name;
       document.getElementById('empty-overlay').classList.add('hidden');
@@ -258,11 +360,13 @@ window.App = (() => {
 
       refreshViews();
       renderPlanList();
+      renderFloorList();
 
       EventBus.emit('plan:loaded', currentPlan);
     } catch (err) {
       console.error('Failed to load plan:', err);
-      alert('Erro ao carregar plano');
+      setStatus('Erro ao carregar plano');
+      setTimeout(() => setStatus(''), 3000);
     } finally {
       showLoading(false);
     }
@@ -271,10 +375,14 @@ window.App = (() => {
   function refreshViews() {
     if (!currentPlan) return;
 
-    // Always rebuild 3D
-    FloorPlan.buildAll(currentPlan);
+    // Use multi-floor rendering if plan has floors
+    if (currentPlan.floors && currentPlan.floors.length > 0) {
+      FloorManager.buildAllFloors(currentPlan);
+    } else {
+      FloorPlan.buildAll(currentPlan);
+    }
 
-    // Update 2D editor
+    // Update 2D editor (uses active floor via synced top-level arrays)
     Editor2D.setPlan(currentPlan);
 
     // Update annotations
@@ -283,6 +391,54 @@ window.App = (() => {
     if (!is2DMode) {
       centerCameraOnPlan();
     }
+  }
+
+  function renderFloorList() {
+    const list = document.getElementById('floor-list');
+    if (!currentPlan || !currentPlan.floors) {
+      list.innerHTML = '<li class="active"><span>Terreo</span></li>';
+      return;
+    }
+
+    const activeIdx = FloorManager.getActiveFloorIndex();
+    list.innerHTML = currentPlan.floors.map((f, i) => `
+      <li data-index="${i}" class="${i === activeIdx ? 'active' : ''}">
+        <span>${escHtml(f.name)}</span>
+        ${currentPlan.floors.length > 1 ? `<button class="floor-delete" data-index="${i}" title="Remover andar">&times;</button>` : ''}
+      </li>
+    `).join('');
+
+    // Click to switch floor
+    list.querySelectorAll('li').forEach(li => {
+      li.addEventListener('click', (e) => {
+        if (e.target.classList.contains('floor-delete')) return;
+        const idx = parseInt(li.dataset.index);
+        UndoManager.snapshot();
+        FloorManager.setActiveFloor(currentPlan, idx);
+        refreshViews();
+        renderFloorList();
+      });
+    });
+
+    // Delete floor
+    list.querySelectorAll('.floor-delete').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.index);
+        const floor = currentPlan.floors[idx];
+        const confirmed = await App.showCustomConfirm(
+          'Remover andar',
+          `Tem certeza que deseja remover "${floor.name}"? Todos os elementos deste andar serao perdidos.`
+        );
+        if (confirmed) {
+          UndoManager.snapshot();
+          FloorManager.removeFloor(currentPlan, idx);
+          refreshViews();
+          renderFloorList();
+          EventBus.emit('plan:changed', currentPlan);
+        }
+      });
+    });
   }
 
   function centerCameraOnPlan() {
@@ -313,23 +469,42 @@ window.App = (() => {
     if (!name) return;
 
     try {
-      const res = await fetch('/api/planta3d/plans', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
-      });
-      const plan = await res.json();
+      let plan = null;
+      // Try server first
+      try {
+        const res = await fetch('/api/planta3d/plans', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        plan = await res.json();
+      } catch (e) {
+        console.warn('Server unavailable, creating locally:', e);
+      }
+
+      // Fallback: create locally
+      if (!plan) {
+        plan = DataModel.createDefaultPlan(name);
+      }
+
+      // Save to local storage
+      await LocalStorage.savePlan(plan);
+
       await loadPlanList();
       await loadPlan(plan.id);
     } catch (err) {
       console.error('Failed to create plan:', err);
-      alert('Erro ao criar plano');
+      setStatus('Erro ao criar plano');
+      setTimeout(() => setStatus(''), 3000);
     }
   }
 
   async function deletePlan(id) {
     try {
-      await fetch(`/api/planta3d/plans/${id}`, { method: 'DELETE' });
+      // Delete from both server and local
+      try { await fetch(`/api/planta3d/plans/${id}`, { method: 'DELETE' }); } catch (e) { /* offline ok */ }
+      try { await LocalStorage.deletePlan(id); } catch (e) { /* ok */ }
+
       if (currentPlan && currentPlan.id === id) {
         currentPlan = null;
         ThreeScene.clearGroups();
@@ -344,18 +519,29 @@ window.App = (() => {
     }
   }
 
+  async function savePlanToServer(plan) {
+    await fetch(`/api/planta3d/plans/${plan.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plan)
+    });
+  }
+
   async function savePlan(plan) {
     if (!plan || !plan.id) return;
+    // Always save locally first (instant, offline-safe)
     try {
-      await fetch(`/api/planta3d/plans/${plan.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(plan)
-      });
-      EventBus.emit('plan:saved', plan);
+      await LocalStorage.savePlan(plan);
     } catch (err) {
-      console.error('Failed to save plan:', err);
+      console.error('Local save failed:', err);
     }
+    // Then try server
+    try {
+      await savePlanToServer(plan);
+    } catch (err) {
+      console.error('Server save failed (saved locally):', err);
+    }
+    EventBus.emit('plan:saved', plan);
   }
 
   function onCanvasClick(event) {

@@ -10,6 +10,8 @@ const ThreeScene = (() => {
   let canvasEl;
   let performanceMode = false;
   let envMap = null;
+  let presentationMode = false;
+  let daylightValue = 0.5; // 0=night, 0.5=day, 1=sunset
 
   // Materials (reusable)
   const materials = {
@@ -283,6 +285,130 @@ const ThreeScene = (() => {
 
   function isPerformanceMode() { return performanceMode; }
 
+  // ═══ FASE 4: Advanced Rendering ═══
+
+  /** Daylight slider — controls sun position, intensity, and scene atmosphere */
+  function setDaylight(value) {
+    daylightValue = Math.max(0, Math.min(1, value));
+
+    if (!dirLight || !ambientLight || !hemiLight) return;
+
+    if (daylightValue <= 0.3) {
+      // Night — dark ambient, dim moon-like light
+      const t = daylightValue / 0.3;
+      ambientLight.intensity = 0.08 + t * 0.2;
+      ambientLight.color.setHex(0x1a1a3e);
+      dirLight.intensity = 0.1 + t * 0.3;
+      dirLight.color.setHex(0x6677aa);
+      dirLight.position.set(-10, 5 + t * 15, -5);
+      hemiLight.intensity = 0.05 + t * 0.15;
+      hemiLight.color.setHex(0x1a2040);
+      hemiLight.groundColor.setHex(0x0a0a15);
+      if (fillLight) fillLight.intensity = 0.05;
+      renderer.setClearColor(new THREE.Color(0x050510));
+      renderer.toneMappingExposure = 0.4 + t * 0.4;
+    } else if (daylightValue <= 0.7) {
+      // Daytime — bright natural light
+      const t = (daylightValue - 0.3) / 0.4;
+      ambientLight.intensity = 0.28 + t * 0.15;
+      ambientLight.color.setHex(0xffffff);
+      dirLight.intensity = 0.7 + t * 0.4;
+      dirLight.color.setHex(0xfff5e6);
+      dirLight.position.set(15, 20 + t * 10, 10);
+      hemiLight.intensity = 0.25 + t * 0.15;
+      hemiLight.color.setHex(0xb1e1ff);
+      hemiLight.groundColor.setHex(0xb97a20);
+      if (fillLight) fillLight.intensity = 0.2 + t * 0.15;
+      renderer.setClearColor(new THREE.Color(0x0f0f1a));
+      renderer.toneMappingExposure = 0.9 + t * 0.4;
+    } else {
+      // Sunset — warm golden light
+      const t = (daylightValue - 0.7) / 0.3;
+      ambientLight.intensity = 0.35 - t * 0.15;
+      ambientLight.color.setHex(0xffddaa);
+      dirLight.intensity = 0.8 - t * 0.3;
+      dirLight.color.setHex(0xff8844);
+      dirLight.position.set(20, 5 + (1 - t) * 10, 15);
+      hemiLight.intensity = 0.3 - t * 0.1;
+      hemiLight.color.setHex(0xff9955);
+      hemiLight.groundColor.setHex(0x553311);
+      if (fillLight) fillLight.intensity = 0.15 - t * 0.1;
+      renderer.setClearColor(new THREE.Color().lerpColors(
+        new THREE.Color(0x0f0f1a), new THREE.Color(0x1a0a05), t
+      ));
+      renderer.toneMappingExposure = 1.1 - t * 0.3;
+    }
+
+    dirLight.shadow.camera.updateProjectionMatrix();
+  }
+
+  function getDaylight() { return daylightValue; }
+
+  /** Glass material for windows — enhanced transparency and refraction */
+  function getGlassMaterial() {
+    return new THREE.MeshPhysicalMaterial({
+      color: 0x88ccff,
+      roughness: 0.05,
+      metalness: 0.0,
+      transparent: true,
+      opacity: 0.25,
+      transmission: 0.9,
+      thickness: 0.1,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.0,
+      side: THREE.DoubleSide,
+      envMapIntensity: 1.0,
+    });
+  }
+
+  /** Emissive material for ceiling lights, lamps, etc. */
+  function getEmissiveMaterial(color, intensity) {
+    return new THREE.MeshStandardMaterial({
+      color: color || 0xfff5e0,
+      emissive: color || 0xfff5e0,
+      emissiveIntensity: intensity || 1.5,
+      roughness: 0.3,
+      metalness: 0.0,
+    });
+  }
+
+  /** Toggle presentation mode — hide UI, max quality, better camera */
+  function setPresentationMode(enabled) {
+    presentationMode = enabled;
+
+    if (enabled) {
+      // Max quality
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3));
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.shadowMap.enabled = true;
+      dirLight.shadow.mapSize.set(4096, 4096);
+      dirLight.shadow.camera.updateProjectionMatrix();
+      renderer.toneMappingExposure = 1.4;
+
+      // Hide grid
+      gridHelper.visible = false;
+
+      // Better camera angle
+      animateCameraTo(
+        { x: 10, y: 8, z: 10 },
+        { x: 3, y: 0, z: 3 },
+        1200
+      );
+    } else {
+      // Restore normal quality
+      const maxPixelRatio = _isMobile ? 1.5 : 2;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
+      renderer.shadowMap.type = _isMobile ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+      const shadowSize = _isMobile ? 1024 : 2048;
+      dirLight.shadow.mapSize.set(shadowSize, shadowSize);
+      dirLight.shadow.camera.updateProjectionMatrix();
+      renderer.toneMappingExposure = 1.2;
+      gridHelper.visible = true;
+    }
+  }
+
+  function isPresentationMode() { return presentationMode; }
+
   function getRenderer() { return renderer; }
   function getScene() { return scene; }
   function getCamera() { return activeCamera; }
@@ -298,6 +424,10 @@ const ThreeScene = (() => {
     init, setCamera, clearGroups, animateCameraTo, toggleGrid, onResize,
     getRenderer, getScene, getCamera, getPerspCamera, getOrthoCamera,
     getControls, getMaterials, getGroups, isMobile,
-    setPerformanceMode, isPerformanceMode
+    setPerformanceMode, isPerformanceMode,
+    // Fase 4: Advanced rendering
+    setDaylight, getDaylight,
+    getGlassMaterial, getEmissiveMaterial,
+    setPresentationMode, isPresentationMode
   };
 })();

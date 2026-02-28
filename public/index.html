@@ -91,6 +91,9 @@
         <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h8l5 5v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M12 2v5h5"/><path d="M6 12h8"/><path d="M6 15h5"/></svg>
         <span class="btn-text">PDF</span>
       </button>
+      <button id="btn-presentation" class="header-btn" title="Modo apresentacao — renderizacao premium">
+        <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="16" height="10" rx="1.5"/><path d="M8 9l5 3-5 3z" fill="currentColor" stroke="none"/><line x1="6" y1="17" x2="14" y2="17"/></svg>
+      </button>
       <button id="btn-fullscreen" class="header-btn" title="Expandir para tela cheia">
         <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V3h4"/><path d="M17 7V3h-4"/><path d="M3 13v4h4"/><path d="M17 13v4h-4"/></svg>
       </button>
@@ -235,6 +238,15 @@
     <div id="canvas-container">
       <canvas id="three-canvas"></canvas>
       <canvas id="editor-canvas"></canvas>
+
+      <!-- Daylight Slider (FASE 4) -->
+      <div id="daylight-control" class="daylight-control hidden">
+        <label title="Controle de luz natural">
+          <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="4"/><line x1="10" y1="2" x2="10" y2="5"/><line x1="10" y1="15" x2="10" y2="18"/><line x1="2" y1="10" x2="5" y2="10"/><line x1="15" y1="10" x2="18" y2="10"/><line x1="4.2" y1="4.2" x2="6.3" y2="6.3"/><line x1="13.7" y1="13.7" x2="15.8" y2="15.8"/><line x1="4.2" y1="15.8" x2="6.3" y2="13.7"/><line x1="13.7" y1="6.3" x2="15.8" y2="4.2"/></svg>
+        </label>
+        <input type="range" id="daylight-slider" min="0" max="100" value="50" step="1" title="Luz natural: arrastar para ajustar">
+        <span id="daylight-label" class="daylight-label">Dia</span>
+      </div>
 
       <div id="loading-overlay" class="overlay hidden">
         <div class="spinner"></div>
@@ -475,6 +487,7 @@
   <!-- Infrastructure -->
   <script src="/plugin-manager.js"></script>
   <script src="/material-editor.js"></script>
+  <script src="/image-reference.js"></script>
   <script src="/pdf-export.js"></script>
 
   <!-- Existing (modified) -->
@@ -486,6 +499,26 @@
 
   <!-- Editor -->
   <script src="/editor-2d.js"></script>
+
+  <!-- FASE 3: Cost Estimator -->
+  <script src="/cost-estimator.js"></script>
+
+  <!-- FASE 5: Image Reference (already loaded above) -->
+
+  <!-- FASE 6: Share Manager -->
+  <script src="/share-manager.js"></script>
+
+  <!-- FASE 7: Measurements -->
+  <script src="/measurements.js"></script>
+
+  <!-- FASE 8: Smart Wizard -->
+  <script src="/smart-wizard.js"></script>
+
+  <!-- FASE 1.1/1.2/2.3: Onboarding + Dashboard + Templates -->
+  <script src="/onboarding.js"></script>
+
+  <!-- FASE 1.4 + 9: Theme Manager + Bottom Nav -->
+  <script src="/theme-manager.js"></script>
 
   <!-- App (last) -->
   <script src="/app.js"></script>

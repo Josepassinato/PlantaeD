@@ -49,6 +49,10 @@ const CanvasRenderer = (() => {
     // Draw layers in order
     if (viewState.showGrid !== false) drawGrid(ctx, pan, zoom, w, h);
     if (plan) {
+      // Background image (FASE 5) — drawn first so all elements appear on top
+      if (typeof ImageReference !== 'undefined' && ImageReference.renderBackground) {
+        ImageReference.renderBackground(ctx, plan, zoom, pan);
+      }
       drawRooms(ctx, plan);
       drawWalls(ctx, plan);
       drawDoors(ctx, plan);

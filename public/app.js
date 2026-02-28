@@ -18,6 +18,15 @@ window.App = (() => {
     Controls.init();
     Annotations.init();
     Editor2D.init();
+    if (typeof ImageReference !== 'undefined') ImageReference.init();
+
+    // Init new feature modules (Fases 1-9)
+    if (typeof ThemeManager !== 'undefined') ThemeManager.init();
+    if (typeof CostEstimator !== 'undefined') CostEstimator.init();
+    if (typeof Measurements !== 'undefined') Measurements.init();
+    if (typeof ShareManager !== 'undefined') ShareManager.init();
+    if (typeof SmartWizard !== 'undefined') SmartWizard.init();
+    if (typeof Onboarding !== 'undefined') Onboarding.init();
 
     // Init undo manager
     UndoManager.init(
@@ -155,6 +164,51 @@ window.App = (() => {
       window._currentPlan = currentPlan;
       Walkthrough.toggle();
     });
+
+    // Fase 4: Daylight slider
+    const daylightSlider = document.getElementById('daylight-slider');
+    const daylightLabel = document.getElementById('daylight-label');
+    const daylightControl = document.getElementById('daylight-control');
+    if (daylightSlider) {
+      daylightSlider.addEventListener('input', (e) => {
+        const v = parseInt(e.target.value) / 100;
+        ThreeScene.setDaylight(v);
+        if (v <= 0.3) daylightLabel.textContent = 'Noite';
+        else if (v <= 0.7) daylightLabel.textContent = 'Dia';
+        else daylightLabel.textContent = 'Entardecer';
+      });
+    }
+
+    // Fase 4: Presentation mode
+    const btnPresentation = document.getElementById('btn-presentation');
+    if (btnPresentation) {
+      btnPresentation.addEventListener('click', () => {
+        if (!currentPlan) {
+          setStatus('Carregue um plano primeiro');
+          setTimeout(() => setStatus(''), 2000);
+          return;
+        }
+        const isPresentation = ThreeScene.isPresentationMode();
+        ThreeScene.setPresentationMode(!isPresentation);
+        btnPresentation.classList.toggle('active', !isPresentation);
+
+        // Show/hide daylight control in 3D mode
+        if (daylightControl) {
+          daylightControl.classList.toggle('hidden', isPresentation || is2DMode);
+        }
+
+        if (!isPresentation) {
+          // Enter presentation — switch to 3D if in 2D
+          if (is2DMode) {
+            set2DMode(false);
+          }
+          setStatus('Modo apresentacao ativado');
+        } else {
+          setStatus('Modo apresentacao desativado');
+        }
+        setTimeout(() => setStatus(''), 2000);
+      });
+    }
 
     // Floor management
     document.getElementById('btn-add-floor').addEventListener('click', () => {
@@ -771,6 +825,12 @@ window.App = (() => {
       ThreeScene.onResize();
     }
 
+    // Show/hide daylight control based on mode
+    const dctl = document.getElementById('daylight-control');
+    if (dctl) {
+      dctl.classList.toggle('hidden', is2DMode || !ThreeScene.isPresentationMode());
+    }
+
     EventBus.emit('mode:changed', { is2D: is2DMode });
   }
 
@@ -1275,5 +1335,12 @@ window.App = (() => {
     });
   }
 
-  return { setStatus, set2DMode, is2D, showCustomPrompt, showCustomConfirm };
+  return {
+    setStatus, set2DMode, is2D, showCustomPrompt, showCustomConfirm,
+    getPlan: () => currentPlan,
+    loadPlan,
+    createNewPlan,
+    refreshViews: () => refreshViews(),
+    loadPlanList
+  };
 })();

@@ -322,3 +322,175 @@ Tudo isso em uma PWA gratuita, mobile-first, que roda no navegador sem precisar 
 | AI Decor (YSpira) | yspiradigital.com | IA foto→redesign mobile | Onboarding, wizard, upload foto, bottom nav |
 | iMeshh | imeshh.com | Assets 3D pro para Blender | Texturas PBR, catalogo expandido, templates |
 | RENDR | rendr.com | LiDAR scan → planta baixa | Medicoes precisas, field notes, export DXF |
+
+---
+
+## DEPENDENCIAS TECNICAS
+
+### Bibliotecas a adicionar (CDN)
+| Biblioteca | Versao | Uso | Fase |
+|------------|--------|-----|------|
+| jsPDF | 2.5+ | Export PDF profissional melhorado | 3, 6 |
+| SheetJS (xlsx) | 0.20+ | Export CSV/planilha de orcamento | 3 |
+| QRCode.js | 1.0+ | Gerar QR Code de compartilhamento | 6 |
+| html2canvas | 1.4+ | Screenshots para thumbnails e galeria | 1, 4 |
+| Three.js postprocessing | r152 | SSAO, bloom, tone mapping avancado | 4 |
+
+### APIs e Servicos
+| Servico | Uso | Fase | Obrigatorio |
+|---------|-----|------|-------------|
+| LocalStorage | Persistencia local (ja existe) | Todas | Sim |
+| File API | Upload de imagens/fotos | 5 | Sim |
+| Clipboard API | Copiar link de compartilhamento | 6 | Nao |
+| Web Share API | Compartilhar via WhatsApp/redes | 6 | Nao |
+| Service Worker | PWA offline (ja existe) | 9 | Sim |
+| Web Workers | Calculos pesados em background | 9 | Nao |
+
+### Estrutura de Arquivos (novos modulos)
+```
+public/
+  ├── onboarding.js          (Fase 1.1 — Modal Start New Project)
+  ├── dashboard.js            (Fase 1.2 — Meus Projetos)
+  ├── bottom-nav.js           (Fase 1.3 — Bottom Navigation)
+  ├── theme-manager.js        (Fase 1.4 — Tema claro/escuro)
+  ├── template-library.js     (Fase 2.3 — Templates prontos)
+  ├── cost-estimator.js       (Fase 3 — Orcamento)
+  ├── image-reference.js      (Fase 5.1 — Upload de referencia)
+  ├── share-manager.js        (Fase 6.1 — Compartilhamento)
+  ├── comment-system.js       (Fase 6.2 — Comentarios)
+  ├── measurements.js         (Fase 7.1 — Medicoes automaticas)
+  ├── field-notes.js          (Fase 7.2 — Anotacoes de campo)
+  ├── smart-wizard.js         (Fase 8 — Assistente guiado)
+  └── dxf-export.js           (Fase 6.3 — Export DXF)
+
+  Arquivos existentes a modificar:
+  ├── index.html              (todas as fases — novos paineis/modais)
+  ├── style.css               (todas as fases — novos estilos)
+  ├── app.js                  (todas as fases — orquestracao)
+  ├── three-scene.js          (Fase 4 — iluminacao/materiais)
+  ├── material-system.js      (Fase 2.2 — texturas expandidas)
+  ├── material-editor.js      (Fase 2.2 — UI de materiais)
+  ├── furniture-catalog.js    (Fase 2.1 — catalogo reorganizado)
+  ├── furniture-models-3d.js  (Fase 2.1 — novos modelos)
+  ├── editor-2d.js            (Fase 5, 7 — referencia + medicoes)
+  ├── pdf-export.js           (Fase 3, 6.3 — PDF melhorado)
+  ├── annotations.js          (Fase 7.2 — field notes)
+  ├── canvas-renderer.js      (Fase 7.1 — cotas automaticas)
+  └── sw.js                   (Fase 9 — cache atualizado)
+```
+
+---
+
+## RISCOS E MITIGACOES
+
+| Risco | Probabilidade | Impacto | Mitigacao |
+|-------|---------------|---------|-----------|
+| Performance degradada com muitas texturas | Media | Alto | LOD + lazy loading + compressao |
+| Three.js pesado em mobile antigo | Alta | Medio | Low-power mode ja existe, expandir |
+| Complexidade de UI com muitas features | Media | Alto | Progressive disclosure — mostrar so o necessario |
+| LocalStorage cheio (5MB limite) | Media | Medio | Compressao JSON + aviso ao usuario |
+| Conflito entre modulos novos e existentes | Baixa | Alto | EventBus para comunicacao desacoplada |
+| Tempo de carregamento inicial | Media | Medio | Code splitting + lazy import de modulos |
+
+---
+
+## METRICAS DE SUCESSO
+
+### KPIs por Fase
+| Fase | Metrica | Meta |
+|------|---------|------|
+| 1 — UI/UX | Tempo ate criar primeiro projeto | < 30 segundos |
+| 2 — Assets | Itens no catalogo | 200+ moveis, 50+ texturas |
+| 3 — Custos | Precisao do orcamento | ±10% do real |
+| 4 — Render | FPS em cena com 50 moveis | > 30 FPS mobile, > 60 FPS desktop |
+| 5 — Upload | Formatos aceitos | JPG, PNG, PDF |
+| 6 — Colaboracao | Tempo para compartilhar | < 3 cliques |
+| 7 — Medicao | Precisao das areas | ±0.1 m2 |
+| 8 — Wizard | Tempo para gerar planta | < 2 minutos |
+| 9 — PWA | Lighthouse score | > 90 (Performance + PWA) |
+
+### KPIs Gerais do Produto
+| Metrica | Estado Atual | Meta v2.0 |
+|---------|-------------|-----------|
+| Moveis no catalogo | 140+ | 250+ |
+| Texturas PBR | 30 | 80+ |
+| Templates prontos | 0 | 10+ |
+| Tempo de onboarding | ~60s | < 30s |
+| Export formats | PNG, JSON, DXF(import), PDF | PNG, JSON, DXF(bidirecional), PDF, CSV |
+| Tamanho do app | ~200KB JS | < 500KB (com lazy load) |
+| Compatibilidade | Chrome, Edge, Safari, Firefox | Todos + PWA instalavel |
+
+---
+
+## CHECKLIST DE CONCLUSAO POR SPRINT
+
+### SPRINT 1 ✅ Criterios de aceite:
+- [ ] Modal "Start New Project" abre ao iniciar o app
+- [ ] Dashboard mostra todos os projetos com thumbnails
+- [ ] Bottom nav funciona em mobile (5 abas)
+- [ ] Pelo menos 3 templates carregam corretamente
+- [ ] Testes manuais em Chrome mobile e desktop
+
+### SPRINT 2 ✅ Criterios de aceite:
+- [ ] Catalogo reorganizado com busca funcional
+- [ ] 50+ novas texturas PBR visiveis no material editor
+- [ ] Glassmorphism aplicado nos paineis
+- [ ] Animacoes suaves nas transicoes
+- [ ] Performance mantida (> 30 FPS mobile)
+
+### SPRINT 3 ✅ Criterios de aceite:
+- [ ] Painel de orcamento exibe precos corretos
+- [ ] Areas calculadas automaticamente por comodo
+- [ ] Export PDF com orcamento incluso
+- [ ] Export CSV funcional
+- [ ] Upload de foto como background funciona
+
+### SPRINT 4 ✅ Criterios de aceite:
+- [ ] Medicoes automaticas exibidas no status bar
+- [ ] Field notes com pins e cores funcionais
+- [ ] Cotas automaticas em todas as paredes
+- [ ] Iluminacao com slider de hora do dia
+- [ ] Vidro transparente nas janelas 3D
+
+### SPRINT 5 ✅ Criterios de aceite:
+- [ ] Flythrough automatico funcional
+- [ ] Screenshot 4K gera imagem correta
+- [ ] Link de compartilhamento gera viewer publico
+- [ ] PDF profissional com capa + renders + orcamento
+- [ ] Export DXF gera arquivo valido para AutoCAD
+
+### SPRINT 6 ✅ Criterios de aceite:
+- [ ] Smart Wizard gera planta em 5 steps
+- [ ] Comentarios com pins visiveis no projeto
+- [ ] Moveis sugeridos por tipo de comodo
+
+### SPRINT 7 ✅ Criterios de aceite:
+- [ ] Sugestoes inteligentes funcionais
+- [ ] PWA instalavel com splash screen
+- [ ] Lighthouse score > 90
+- [ ] Lazy loading reduz tempo de carregamento inicial
+- [ ] App funciona offline (leitura)
+
+---
+
+## RESUMO PARA NOVO CHAT
+
+Cole isso no proximo chat do Claude Code para dar continuidade:
+
+```
+PROJETO: Planta3D v2.0
+REPO: https://github.com/Josepassinato/PlantaeD.git
+BRANCH: claude/init-planta3d-repo-rExNb
+VPS: root@76.13.109.151 (porta 3400, PM2 process: planta3d)
+PLANO: PLANO-APERFEICOAMENTO.md (9 fases, 7 sprints)
+STACK: Node.js + Express + Three.js + Canvas 2D (vanilla JS, sem framework)
+ESTADO: Plano completo aprovado, pronto para implementar Sprint 1
+
+Comece implementando a FASE 1 — UI/UX PREMIUM:
+1.1 Modal "Start New Project" com cards visuais
+1.2 Dashboard "Meus Projetos" com grid de thumbnails
+1.3 Bottom Navigation Mobile
+1.4 Tema visual com glassmorphism
+
+Leia o arquivo PLANO-APERFEICOAMENTO.md para todos os detalhes.
+```
